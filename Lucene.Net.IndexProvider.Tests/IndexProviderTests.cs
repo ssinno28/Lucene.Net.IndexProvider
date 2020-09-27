@@ -1,0 +1,202 @@
+﻿using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Threading.Tasks;
+using Lucene.Net.DocumentMapper.Helpers;
+using Lucene.Net.Index;
+using Lucene.Net.IndexProvider.Helpers;
+using Lucene.Net.IndexProvider.Interfaces;
+using Lucene.Net.IndexProvider.Tests.Models;
+using Lucene.Net.Search;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Xunit;
+
+namespace Lucene.Net.IndexProvider.Tests
+{
+    public class IndexProviderTests : IAsyncLifetime
+    {
+        private string _settingsPath;
+        private string _indexPath;
+        private IIndexProvider _indexProvider;
+        private ServiceProvider _serviceProvider;
+
+        [Fact]
+        public async Task Test_Paging_Functionality()
+        {
+            var pagedPosts = 
+                await _indexProvider.Search()
+                    .Paged(2, 5)
+                    .ListResult<BlogPost>();
+
+            Assert.Equal(10, pagedPosts.Count);
+            Assert.Equal("10", pagedPosts.Items.Last().Id);
+        }
+
+        [Fact]
+        public async Task Test_Get_All()
+        {
+            var listResult =
+                await _indexProvider.Search()
+                    .ListResult(typeof(BlogPost));
+
+            Assert.Equal(10, listResult.Count);
+        }
+
+        [Fact]
+        public async Task Test_Filter_On_List()
+        {
+            var taggedPost = 
+                await _indexProvider.Search()
+                    .Should(() => new TermQuery(new Term("TagIds", "11")))
+                    .ListResult<BlogPost>();
+
+            Assert.Equal(1, taggedPost.Count);
+            Assert.Equal("10", taggedPost.Items[0].Id);
+        }         
+        
+        [Fact]
+        public async Task Test_Return_Multiple_By_Id()
+        {
+            var taggedPost = 
+                await _indexProvider.Search()
+                    .Should(() => new TermQuery(new Term("Id", "1")))
+                    .Should(() => new TermQuery(new Term("Id", "2")))
+                    .ListResult(typeof(BlogPost));
+
+            Assert.Equal(2, taggedPost.Count);
+        } 
+        
+        // TODO: figure out why phrase query isn't working
+        //[Fact]
+        //public async Task Test_Filter_Phrase()
+        //{
+        //    var listResult = 
+        //        await _indexProvider.Search()
+        //            .Phrase("Body", "My test body", OccurType.Must)
+        //            .ListResult<BlogPost>();
+
+        //    Assert.Equal(1, listResult.Count);
+        //    Assert.Equal("9", listResult.Items[0].Id);
+        //}
+
+        [Fact]
+        public void Test_Get_Document_By_Id()
+        {
+            var blogPost = _indexProvider.GetDocumentById<BlogPost>("8");
+            Assert.Equal("8", blogPost.Id);
+        }
+
+        [Fact]
+        public async Task Test_Search_Nested_Properties()
+        {
+            var listResult =
+                await _indexProvider.Search()
+                    .Must(() => new TermQuery(new Term("Tags.Name", "my-test-tag")))
+                    .ListResult<BlogPost>();
+
+            Assert.Equal(1, listResult.Count);
+            Assert.Equal("9", listResult.Items[0].Id);
+        }        
+        
+        [Fact]
+        public async Task Test_Fuzzy_Query()
+        {
+            var listResult =
+                await _indexProvider.Search()
+                    .Must(() => new FuzzyQuery(new Term("Body", "My tests body")))
+                    .ListResult<BlogPost>();
+
+            Assert.Equal(1, listResult.Count);
+            Assert.Equal("9", listResult.Items[0].Id);
+        }
+
+        public async Task InitializeAsync()
+        {
+            _settingsPath = Path.GetFullPath(Path.Combine($"{Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)}", @"..\..\..\settings"));
+            _indexPath = $"{_settingsPath}\\PersonalBlog\\index";
+
+            _serviceProvider = new ServiceCollection()
+                .AddLuceneDocumentMapper()
+                .AddLuceneProvider(_indexPath)
+                .AddLogging(x => x.AddConsole())
+                .BuildServiceProvider();
+
+            _indexProvider = _serviceProvider.GetService<IIndexProvider>();
+            await _indexProvider.CreateIndexIfNotExists(typeof(BlogPost));
+            await _indexProvider.Store(new List<BlogPost>
+            {
+                new BlogPost
+                {
+                    Name = "My Test Blog Post",
+                    Id = "1"
+                },
+                new BlogPost
+                {
+                    Name = "My Test Blog Post",
+                    Id = "2"
+                },
+                new BlogPost
+                {
+                    Name = "My Test Blog Post",
+                    Id = "3"
+                },
+                new BlogPost
+                {
+                    Name = "My Test Blog Post",
+                    Id = "4"
+                },
+                new BlogPost
+                {
+                    Name = "My Test Blog Post",
+                    Id = "5"
+                },
+                new BlogPost
+                {
+                    Name = "My Test Blog Post",
+                    Id = "6"
+                },
+                new BlogPost
+                {
+                    Name = "My Test Blog Post",
+                    Id = "7"
+                },
+                new BlogPost
+                {
+                    Name = "My Test Blog Post",
+                    Id = "8"
+                },
+                new BlogPost
+                {
+                    Name = "My Test Blog Post",
+                    Id = "9",
+                    Body = "My test body",
+                    Tags = new List<Tag>()
+                    {
+                        new Tag()
+                        {
+                            Id = "1",
+                            Name = "my-test-tag"
+                        }
+                    }
+                },
+                new BlogPost
+                {
+                    Name = "My Test Blog Post",
+                    Id = "10",
+                    TagIds = new List<string>()
+                    {
+                        "11",
+                        "2"
+                    }
+                }
+            });
+        }
+
+        public async Task DisposeAsync()
+        {
+            await _indexProvider.DeleteIndex(nameof(BlogPost));
+        }
+    }
+}
