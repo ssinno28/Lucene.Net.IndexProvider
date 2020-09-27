@@ -12,7 +12,8 @@ namespace Lucene.Net.IndexProvider.Interfaces
         Task DeleteIndex(string indexName);
         Task Store(IList<object> contentItems, Type contentType);
         Task Store<T>(IList<T> contentItems);
-        Task Delete(string indexName, string documentId);
+        Task Delete(Type contentType, string documentId);
+        Task Delete<T>(string documentId);
         Task<bool> Update(object contentItem, string id);
         object GetDocumentById(Type contentType, string id);
         T GetDocumentById<T>(string id);

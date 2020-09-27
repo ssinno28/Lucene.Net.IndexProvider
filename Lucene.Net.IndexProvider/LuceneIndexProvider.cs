@@ -296,16 +296,21 @@ namespace Lucene.Net.IndexProvider
             return Store(contentItems.Cast<object>().ToList(), typeof(T));
         }
 
-        public Task Delete(string indexName, string documentId)
+        public Task Delete<T>(string documentId)
+        {
+            return Delete(typeof(T), documentId);
+        }
+
+        public Task Delete(Type contentType, string documentId)
         {
             return Task.Run(() =>
             {
                 using (var analyzer = new StandardAnalyzer(_luceneConfig.LuceneVersion))
                 {
                     var config = new IndexWriterConfig(_luceneConfig.LuceneVersion, analyzer);
-                    using (var writer = new IndexWriter(GetDirectory(indexName), config))
+                    using (var writer = new IndexWriter(GetDirectory(contentType.Name), config))
                     {
-                        writer.DeleteDocuments(new Term("Id", documentId));
+                        writer.DeleteDocuments(new Term(GetKeyName(contentType), documentId));
                         if (writer.HasDeletions())
                         {
                             writer.ForceMergeDeletes();
