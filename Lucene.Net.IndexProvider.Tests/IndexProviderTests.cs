@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -66,6 +67,63 @@ namespace Lucene.Net.IndexProvider.Tests
                     .ListResult(typeof(BlogPost));
 
             Assert.Equal(2, taggedPost.Count);
+        }         
+        
+        [Fact]
+        public async Task Test_Returns_Single_Result()
+        {
+            var taggedPost = 
+                await _indexProvider.Search()
+                    .Must(() => new TermQuery(new Term("Id", "1")))
+                    .SingleResult<BlogPost>();
+
+            Assert.NotNull(taggedPost);
+        }         
+        
+        [Fact]
+        public async Task Test_Returns_Single_Result_Object()
+        {
+            var taggedPost = 
+                await _indexProvider.Search()
+                    .Must(() => new TermQuery(new Term("Id", "1")))
+                    .SingleResult(typeof(BlogPost));
+
+            Assert.NotNull(taggedPost);
+        }   
+        
+        [Fact]
+        public async Task Test_Returns_Single_Result_Object_Null()
+        {
+            var taggedPost = 
+                await _indexProvider.Search()
+                    .Must(() => new TermQuery(new Term("Id", "100")))
+                    .SingleResult(typeof(BlogPost));
+
+            Assert.Null(taggedPost);
+        }        
+        
+        [Fact]
+        public async Task Test_Sort_By_Date_Asc()
+        {
+            var taggedPost = 
+                await _indexProvider.Search()
+                    .Sort(() => new SortField("PublishedDate", SortFieldType.STRING, true))
+                    .ListResult<BlogPost>();
+
+            Assert.Equal("1", taggedPost.Hits.First().Hit.Id);
+            Assert.Equal("3", taggedPost.Hits.Last().Hit.Id);
+        }         
+        
+        [Fact]
+        public async Task Test_Sort_By_Date_Desc()
+        {
+            var taggedPost = 
+                await _indexProvider.Search()
+                    .Sort(() => new SortField("PublishedDate", SortFieldType.STRING))
+                    .ListResult<BlogPost>();
+
+            Assert.Equal("3", taggedPost.Hits.First().Hit.Id);
+            Assert.Equal("1", taggedPost.Hits.Last().Hit.Id);
         } 
         
         // TODO: figure out why phrase query isn't working
@@ -123,6 +181,7 @@ namespace Lucene.Net.IndexProvider.Tests
                 .AddLogging(x => x.AddConsole())
                 .BuildServiceProvider();
 
+            var dateTime = DateTime.Now;
             _indexProvider = _serviceProvider.GetService<IIndexProvider>();
             await _indexProvider.CreateIndexIfNotExists(typeof(BlogPost));
             await _indexProvider.Store(new List<BlogPost>
@@ -130,42 +189,50 @@ namespace Lucene.Net.IndexProvider.Tests
                 new BlogPost
                 {
                     Name = "My Test Blog Post",
-                    Id = "1"
+                    Id = "1",
+                    PublishedDate = DateTime.Now.AddDays(-1)
                 },
                 new BlogPost
                 {
                     Name = "My Test Blog Post",
-                    Id = "2"
+                    Id = "2",
+                    PublishedDate = DateTime.Now.AddDays(-100)
                 },
                 new BlogPost
                 {
                     Name = "My Test Blog Post",
-                    Id = "3"
+                    Id = "3",
+                    PublishedDate = DateTime.Now.AddDays(-120)
                 },
                 new BlogPost
                 {
                     Name = "My Test Blog Post",
-                    Id = "4"
+                    Id = "4",
+                    PublishedDate = DateTime.Now.AddDays(-11)
                 },
                 new BlogPost
                 {
                     Name = "My Test Blog Post",
-                    Id = "5"
+                    Id = "5",
+                    PublishedDate = DateTime.Now.AddDays(-19)
                 },
                 new BlogPost
                 {
                     Name = "My Test Blog Post",
-                    Id = "6"
+                    Id = "6",
+                    PublishedDate = DateTime.Now.AddDays(-13)
                 },
                 new BlogPost
                 {
                     Name = "My Test Blog Post",
-                    Id = "7"
+                    Id = "7",
+                    PublishedDate = DateTime.Now.AddDays(-7)
                 },
                 new BlogPost
                 {
                     Name = "My Test Blog Post",
-                    Id = "8"
+                    Id = "8",
+                    PublishedDate = DateTime.Now.AddDays(-8)
                 },
                 new BlogPost
                 {
@@ -179,7 +246,8 @@ namespace Lucene.Net.IndexProvider.Tests
                             Id = "1",
                             Name = "my-test-tag"
                         }
-                    }
+                    },
+                    PublishedDate = DateTime.Now.AddDays(-9)
                 },
                 new BlogPost
                 {
@@ -189,7 +257,8 @@ namespace Lucene.Net.IndexProvider.Tests
                     {
                         "11",
                         "2"
-                    }
+                    },
+                    PublishedDate = DateTime.Now.AddDays(-10)
                 }
             });
         }

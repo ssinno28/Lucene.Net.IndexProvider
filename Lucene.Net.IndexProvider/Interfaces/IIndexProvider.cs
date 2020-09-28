@@ -20,7 +20,7 @@ namespace Lucene.Net.IndexProvider.Interfaces
         IndexResult<T> GetDocumentById<T>(string id);
         Task<bool> SwapIndex(string tempIndex, string index);
         FilterBuilder.FilterBuilder Search();
-        Task<ListResult<T>> GetByFilters<T>(IList<Filter> filters, int? page = null, int? pageSize = null);
-        Task<ListResult> GetByFilters(IList<Filter> filters, Type contentType, int? page = null, int? pageSize = null);
+        Task<ListResult<T>> GetByFilters<T>(IList<Filter> filters, IList<Sort> sorts, int? page = null, int? pageSize = null);
+        Task<ListResult> GetByFilters(IList<Filter> filters, IList<Sort> sorts, Type contentType, int? page = null, int? pageSize = null);
     }
 }
