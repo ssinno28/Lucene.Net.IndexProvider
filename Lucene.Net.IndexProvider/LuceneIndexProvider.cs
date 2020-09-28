@@ -50,16 +50,22 @@ namespace Lucene.Net.IndexProvider
             }
         }
 
-        public Directory GetDirectory(string indexName)
+        private Directory GetDirectory(string indexName)
         {
             var directoryInfo = new DirectoryInfo(Path.Combine(_luceneConfig.Path, indexName));
             return FSDirectory.Open(directoryInfo);
         }
 
-        public object GetDocumentById(Type contentType, string id)
+        /// <summary>
+        /// Gets a single document for the supplied key
+        /// </summary>
+        /// <param name="contentType"></param>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public IndexResult<object> GetDocumentById(Type contentType, string id)
         {
             var directory = GetDirectory(contentType.Name);
-            object contentItem = null;
+            IndexResult<object> indexResult = null;
 
             try
             {
@@ -71,7 +77,11 @@ namespace Lucene.Net.IndexProvider
                     var hits = indexSearcher.Search(query, _luceneConfig.BatchSize);
 
                     var doc = indexSearcher.Doc(hits.ScoreDocs[0].Doc);
-                    contentItem = _mapper.Map(doc, contentType);
+                    indexResult = new IndexResult<object>
+                    {
+                        Hit = _mapper.Map(doc, contentType),
+                        Score = hits.ScoreDocs[0].Score
+                    };
                 }
             }
             catch (Exception ex)
@@ -79,12 +89,23 @@ namespace Lucene.Net.IndexProvider
                 _logger.LogError(ex, "Could not get document for id {0} and content type", id, contentType.Name);
             }
 
-            return contentItem;
+            return indexResult;
         }
 
-        public T GetDocumentById<T>(string id)
+        /// <summary>
+        /// Gets a single document for the supplied key and casts it
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public IndexResult<T> GetDocumentById<T>(string id)
         {
-            return (T)GetDocumentById(typeof(T), id);
+            var indexResult = GetDocumentById(typeof(T), id);
+            return new IndexResult<T>
+            {
+                Hit = (T)indexResult.Hit,
+                Score = indexResult.Score
+            };
         }
 
         private string GetKeyName(Type contentType)
@@ -99,6 +120,12 @@ namespace Lucene.Net.IndexProvider
             return keyProperty == null ? "Id" : keyProperty.Name;
         }
 
+        /// <summary>
+        /// Swaps a newly created index with an older one
+        /// </summary>
+        /// <param name="tempIndex"></param>
+        /// <param name="index"></param>
+        /// <returns></returns>
         public Task<bool> SwapIndex(string tempIndex, string index)
         {
             return Task.Run(async () =>
@@ -119,6 +146,10 @@ namespace Lucene.Net.IndexProvider
             });
         }
 
+        /// <summary>
+        /// Exposes a fluent api for searching against th index
+        /// </summary>
+        /// <returns></returns>
         public FilterBuilder.FilterBuilder Search()
         {
             return new FilterBuilder.FilterBuilder(this);
@@ -129,10 +160,21 @@ namespace Lucene.Net.IndexProvider
             var contentType = typeof(T);
             var listResult = await GetByFilters(filters, contentType, page, pageSize);
 
+            IList<IndexResult<T>> indexResults = new List<IndexResult<T>>();
+            foreach (var listResultItem in listResult.Hits)
+            {
+                indexResults.Add(new IndexResult<T>()
+                {
+                    Hit = (T)listResultItem.Hit,
+                    Score = listResultItem.Score
+                });
+            }
+
             return new ListResult<T>
             {
                 Count = listResult.Count,
-                Items = listResult.Items.Cast<T>().ToList()
+                Hits = indexResults,
+                MaxScore = listResult.MaxScore
             };
         }
 
@@ -140,11 +182,12 @@ namespace Lucene.Net.IndexProvider
         public async Task<ListResult> GetByFilters(IList<Filter> filters, Type contentType, int? page = null, int? pageSize = null)
         {
             var directory = GetDirectory(contentType.Name);
-            List<object> contentItems = new List<object>();
+            List<IndexResult<object>> indexResults = new List<IndexResult<object>>();
 
             return await Task.Run(() =>
             {
                 int count;
+                float maxScore;
                 using (var indexReader = DirectoryReader.Open(directory))
                 {
                     var indexSearcher = new IndexSearcher(indexReader);
@@ -161,6 +204,7 @@ namespace Lucene.Net.IndexProvider
 
                     var hits = indexSearcher.Search(query, _luceneConfig.BatchSize);
                     count = hits.TotalHits;
+                    maxScore = hits.MaxScore;
 
                     if (page.HasValue && pageSize.HasValue)
                     {
@@ -171,7 +215,11 @@ namespace Lucene.Net.IndexProvider
                         {
                             Document doc = indexSearcher.Doc(hits.ScoreDocs[i].Doc);
                             var contentItem = _mapper.Map(doc, contentType);
-                            contentItems.Add(contentItem);
+                            indexResults.Add(new IndexResult<object>
+                            {
+                                Hit = contentItem,
+                                Score = hits.ScoreDocs[i].Score
+                            });
                         }
                     }
                     else
@@ -180,19 +228,30 @@ namespace Lucene.Net.IndexProvider
                         {
                             Document doc = indexSearcher.Doc(hits.ScoreDocs[i].Doc);
                             var contentItem = _mapper.Map(doc, contentType);
-                            contentItems.Add(contentItem);
+                            indexResults.Add(new IndexResult<object>
+                            {
+                                Hit = contentItem,
+                                Score = hits.ScoreDocs[i].Score
+                            });
                         }
                     }
                 }
 
                 return new ListResult
                 {
-                    Items = contentItems,
-                    Count = count
+                    Hits = indexResults,
+                    Count = count,
+                    MaxScore = maxScore
                 };
             });
         }
 
+        /// <summary>
+        /// Updates a single document based on the key supplied
+        /// </summary>
+        /// <param name="contentItem"></param>
+        /// <param name="id"></param>
+        /// <returns></returns>
         public Task<bool> Update(object contentItem, string id)
         {
             string indexName = contentItem.GetType().Name;
@@ -225,11 +284,21 @@ namespace Lucene.Net.IndexProvider
             });
         }
 
+        /// <summary>
+        /// Creates the index for a given type if it doesn't exist
+        /// </summary>
+        /// <param name="contentType"></param>
+        /// <returns></returns>
         public Task CreateIndexIfNotExists(Type contentType)
         {
             return CreateIndexIfNotExists(contentType.Name);
         }
 
+        /// <summary>
+        /// Creates the index for a given type if it doesn't exist
+        /// </summary>
+        /// <param name="indexName"></param>
+        /// <returns></returns>
         public Task CreateIndexIfNotExists(string indexName)
         {
             bool exists = DirectoryReader.IndexExists(GetDirectory(indexName));
@@ -247,6 +316,11 @@ namespace Lucene.Net.IndexProvider
             });
         }
 
+        /// <summary>
+        /// Deletes an index for the given type
+        /// </summary>
+        /// <param name="indexName"></param>
+        /// <returns></returns>
         public Task DeleteIndex(string indexName)
         {
             return Task.Run(() =>
@@ -258,6 +332,12 @@ namespace Lucene.Net.IndexProvider
             });
         }
 
+        /// <summary>
+        /// Takes a list of objects and stores them to the same index
+        /// </summary>
+        /// <param name="contentItems"></param>
+        /// <param name="contentType"></param>
+        /// <returns></returns>
         public Task Store(IList<object> contentItems, Type contentType)
         {
             contentItems = contentItems.ToArray();
@@ -291,16 +371,34 @@ namespace Lucene.Net.IndexProvider
             });
         }
 
+        /// <summary>
+        /// Takes a list of objects and stores them in the same index
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="contentItems"></param>
+        /// <returns></returns>
         public Task Store<T>(IList<T> contentItems)
         {
             return Store(contentItems.Cast<object>().ToList(), typeof(T));
         }
 
+        /// <summary>
+        /// Deletes a document for the given key
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="documentId"></param>
+        /// <returns></returns>
         public Task Delete<T>(string documentId)
         {
             return Delete(typeof(T), documentId);
         }
 
+        /// <summary>
+        /// Deletes a document for the given key
+        /// </summary>
+        /// <param name="contentType"></param>
+        /// <param name="documentId"></param>
+        /// <returns></returns>
         public Task Delete(Type contentType, string documentId)
         {
             return Task.Run(() =>

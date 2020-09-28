@@ -73,13 +73,13 @@ namespace Lucene.Net.IndexProvider.FilterBuilder
         public async Task<bool> Any(Type contentType)
         {
             var result = await _indexProvider.GetByFilters(_filters, contentType, _page, _pageSize);
-            return result != null && result.Items.Any();
+            return result != null && result.Hits.Any();
         }
 
         public async Task<bool> Any<T>()
         {
             var result = await _indexProvider.GetByFilters(_filters, typeof(T), _page, _pageSize);
-            return result != null && result.Items.Any();
+            return result != null && result.Hits.Any();
         }
     }
 }

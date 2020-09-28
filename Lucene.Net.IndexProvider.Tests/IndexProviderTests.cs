@@ -31,7 +31,7 @@ namespace Lucene.Net.IndexProvider.Tests
                     .ListResult<BlogPost>();
 
             Assert.Equal(10, pagedPosts.Count);
-            Assert.Equal("10", pagedPosts.Items.Last().Id);
+            Assert.Equal("10", pagedPosts.Hits.Last().Hit.Id);
         }
 
         [Fact]
@@ -53,7 +53,7 @@ namespace Lucene.Net.IndexProvider.Tests
                     .ListResult<BlogPost>();
 
             Assert.Equal(1, taggedPost.Count);
-            Assert.Equal("10", taggedPost.Items[0].Id);
+            Assert.Equal("10", taggedPost.Hits[0].Hit.Id);
         }         
         
         [Fact]
@@ -85,7 +85,7 @@ namespace Lucene.Net.IndexProvider.Tests
         public void Test_Get_Document_By_Id()
         {
             var blogPost = _indexProvider.GetDocumentById<BlogPost>("8");
-            Assert.Equal("8", blogPost.Id);
+            Assert.Equal("8", blogPost.Hit.Id);
         }
 
         [Fact]
@@ -97,7 +97,7 @@ namespace Lucene.Net.IndexProvider.Tests
                     .ListResult<BlogPost>();
 
             Assert.Equal(1, listResult.Count);
-            Assert.Equal("9", listResult.Items[0].Id);
+            Assert.Equal("9", listResult.Hits[0].Hit.Id);
         }        
         
         [Fact]
@@ -109,7 +109,7 @@ namespace Lucene.Net.IndexProvider.Tests
                     .ListResult<BlogPost>();
 
             Assert.Equal(1, listResult.Count);
-            Assert.Equal("9", listResult.Items[0].Id);
+            Assert.Equal("9", listResult.Hits[0].Hit.Id);
         }
 
         public async Task InitializeAsync()

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Lucene.Net.IndexProvider.FilterBuilder;
+using Lucene.Net.IndexProvider.Models;
 
 namespace Lucene.Net.IndexProvider.Interfaces
 {
@@ -15,8 +16,8 @@ namespace Lucene.Net.IndexProvider.Interfaces
         Task Delete(Type contentType, string documentId);
         Task Delete<T>(string documentId);
         Task<bool> Update(object contentItem, string id);
-        object GetDocumentById(Type contentType, string id);
-        T GetDocumentById<T>(string id);
+        IndexResult<object> GetDocumentById(Type contentType, string id);
+        IndexResult<T> GetDocumentById<T>(string id);
         Task<bool> SwapIndex(string tempIndex, string index);
         FilterBuilder.FilterBuilder Search();
         Task<ListResult<T>> GetByFilters<T>(IList<Filter> filters, int? page = null, int? pageSize = null);
