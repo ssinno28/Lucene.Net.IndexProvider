@@ -351,6 +351,17 @@ namespace Lucene.Net.IndexProvider
         /// <returns></returns>
         public Task Store(IList<object> contentItems, Type contentType)
         {
+            return Store(contentItems, contentType.Name);
+        }
+
+        /// <summary>
+        /// Allowing to store documents into indexes with no type
+        /// </summary>
+        /// <param name="contentItems"></param>
+        /// <param name="indexName"></param>
+        /// <returns></returns>
+        public Task Store(IList<object> contentItems, string indexName)
+        {
             contentItems = contentItems.ToArray();
 
             if (!contentItems.Any())
@@ -363,7 +374,7 @@ namespace Lucene.Net.IndexProvider
                 using (var analyzer = new StandardAnalyzer(_luceneConfig.LuceneVersion))
                 {
                     var config = new IndexWriterConfig(_luceneConfig.LuceneVersion, analyzer);
-                    using (var writer = new IndexWriter(GetDirectory(contentType.Name), config))
+                    using (var writer = new IndexWriter(GetDirectory(indexName), config))
                     {
                         foreach (var contentItem in contentItems)
                         {

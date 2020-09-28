@@ -12,6 +12,7 @@ namespace Lucene.Net.IndexProvider.Interfaces
         Task CreateIndexIfNotExists(string indexName);
         Task DeleteIndex(string indexName);
         Task Store(IList<object> contentItems, Type contentType);
+        Task Store(IList<object> contentItems, string indexName);
         Task Store<T>(IList<T> contentItems);
         Task Delete(Type contentType, string documentId);
         Task Delete<T>(string documentId);
