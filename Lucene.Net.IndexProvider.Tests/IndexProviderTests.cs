@@ -12,6 +12,7 @@ using Lucene.Net.IndexProvider.Tests.Models;
 using Lucene.Net.Search;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Moq;
 using Xunit;
 
 namespace Lucene.Net.IndexProvider.Tests
@@ -22,6 +23,7 @@ namespace Lucene.Net.IndexProvider.Tests
         private string _indexPath;
         private IIndexProvider _indexProvider;
         private ServiceProvider _serviceProvider;
+        private Mock<ILocalIndexPathFactory> _mockLocalIndexPathFactory;
 
         [Fact]
         public async Task Test_Paging_Functionality()
@@ -174,12 +176,17 @@ namespace Lucene.Net.IndexProvider.Tests
         {
             _settingsPath = Path.GetFullPath(Path.Combine($"{Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)}", @"..\..\..\settings"));
             _indexPath = $"{_settingsPath}\\PersonalBlog\\index";
+            _mockLocalIndexPathFactory = new Mock<ILocalIndexPathFactory>();
+            _mockLocalIndexPathFactory.Setup(x => x.GetLocalIndexPath())
+                .Returns(_indexPath);
 
-            _serviceProvider = new ServiceCollection()
+            var services = new ServiceCollection()
                 .AddLuceneDocumentMapper()
-                .AddLuceneProvider(_indexPath)
-                .AddLogging(x => x.AddConsole())
-                .BuildServiceProvider();
+                .AddLuceneProvider()
+                .AddLogging(x => x.AddConsole());
+
+            services.Add(new ServiceDescriptor(typeof(ILocalIndexPathFactory), _mockLocalIndexPathFactory.Object));
+            _serviceProvider = services.BuildServiceProvider();
 
             var dateTime = DateTime.Now;
             _indexProvider = _serviceProvider.GetService<IIndexProvider>();

@@ -10,6 +10,8 @@ It will need to be wired up with DI like so:
             services.AddLuceneDocumentMapper();
 ```
 
+You'll also want to setup a LocalIndexPathFactory class that implements `ILocalIndexPathFactory` and add it as an injected service.
+
 In order to query against the index there is a fluent API that allows you to pass in as many query types you want:
 
 ```c#

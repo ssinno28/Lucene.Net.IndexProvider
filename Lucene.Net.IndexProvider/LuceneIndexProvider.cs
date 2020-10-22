@@ -29,11 +29,17 @@ namespace Lucene.Net.IndexProvider
         private readonly LuceneConfig _luceneConfig;
         private readonly IDocumentMapper _mapper;
         private readonly ILogger<LuceneIndexProvider> _logger;
+        private readonly ILocalIndexPathFactory _localIndexPathFactory;
 
-        public LuceneIndexProvider(LuceneConfig luceneConfig, IDocumentMapper mapper, ILoggerFactory loggerFactory)
+        public LuceneIndexProvider(
+            LuceneConfig luceneConfig, 
+            IDocumentMapper mapper, 
+            ILoggerFactory loggerFactory, 
+            ILocalIndexPathFactory localIndexPathFactory)
         {
             _luceneConfig = luceneConfig;
             _mapper = mapper;
+            _localIndexPathFactory = localIndexPathFactory;
             _logger = loggerFactory.CreateLogger<LuceneIndexProvider>();
 
             // Ensures the directory exists
@@ -42,9 +48,10 @@ namespace Lucene.Net.IndexProvider
 
         private void EnsureDirectoryExists()
         {
-            if (string.IsNullOrEmpty(_luceneConfig.Path)) return;
+            string localPath = _localIndexPathFactory.GetLocalIndexPath();
+            if (string.IsNullOrEmpty(localPath)) return;
 
-            var directory = new DirectoryInfo(_luceneConfig.Path);
+            var directory = new DirectoryInfo(localPath);
             if (!directory.Exists)
             {
                 directory.Create();
@@ -53,7 +60,8 @@ namespace Lucene.Net.IndexProvider
 
         private Directory GetDirectory(string indexName)
         {
-            var directoryInfo = new DirectoryInfo(Path.Combine(_luceneConfig.Path, indexName));
+            string localPath = _localIndexPathFactory.GetLocalIndexPath();
+            var directoryInfo = new DirectoryInfo(Path.Combine(localPath, indexName));
             return FSDirectory.Open(directoryInfo);
         }
 
@@ -131,8 +139,10 @@ namespace Lucene.Net.IndexProvider
         {
             return Task.Run(async () =>
             {
-                string tempIndexPath = Path.Combine(_luceneConfig.Path, tempIndex);
-                string indexPath = Path.Combine(_luceneConfig.Path, index);
+                string localPath = _localIndexPathFactory.GetLocalIndexPath();
+
+                string tempIndexPath = Path.Combine(localPath, tempIndex);
+                string indexPath = Path.Combine(localPath, index);
 
                 if (!System.IO.Directory.Exists(tempIndexPath))
                 {
@@ -336,7 +346,8 @@ namespace Lucene.Net.IndexProvider
         {
             return Task.Run(() =>
             {
-                var directory = new DirectoryInfo(Path.Combine(_luceneConfig.Path, indexName));
+                string localPath = _localIndexPathFactory.GetLocalIndexPath();
+                var directory = new DirectoryInfo(Path.Combine(localPath, indexName));
                 if (!directory.Exists) return;
 
                 directory.Delete(true);

@@ -8,13 +8,12 @@ namespace Lucene.Net.IndexProvider.Helpers
 {
     public static class ServiceCollectionHelpers
     {
-        public static IServiceCollection AddLuceneProvider(this IServiceCollection services, string indexesPath)
+        public static IServiceCollection AddLuceneProvider(this IServiceCollection services)
         {
             var luceneConfig = new LuceneConfig
             {
                 BatchSize = BooleanQuery.MaxClauseCount,
-                LuceneVersion = LuceneVersion.LUCENE_48,
-                Path = indexesPath
+                LuceneVersion = LuceneVersion.LUCENE_48
             };
 
             services.AddSingleton(luceneConfig);
