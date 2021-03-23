@@ -33,3 +33,4 @@ jobs:
       with:
           PROJECT_FILE_PATH: Lucene.Net.IndexProvider/Lucene.Net.IndexProvider.csproj
           NUGET_KEY: ${{secrets.NUGET_API_KEY}}
+          INCLUDE_SYMBOLS: true
