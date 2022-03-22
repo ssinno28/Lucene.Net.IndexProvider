@@ -29,7 +29,7 @@ jobs:
       run: dotnet test Lucene.Net.IndexProvider.sln
       
     - name: Publish Lucene.Net.IndexProvider
-      uses: rohith/publish-nuget@v2
+      uses: alirezanet/publish-nuget@v3.0.0
       with:
           PROJECT_FILE_PATH: Lucene.Net.IndexProvider/Lucene.Net.IndexProvider.csproj
           NUGET_KEY: ${{secrets.NUGET_API_KEY}}
