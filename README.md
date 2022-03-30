@@ -6,11 +6,30 @@ A simple service that helps to abstract common operations when interacting with 
 It will need to be wired up with DI like so:
 
 ```c#
-            services.AddLuceneProvider("path/to/index");
+            services.AddLuceneProvider();
             services.AddLuceneDocumentMapper();
+            
+            services.AddScoped<ILocalIndexPathFactory, LocalIndexPathFactory>();
 ```
 
 You'll also want to setup a LocalIndexPathFactory class that implements `ILocalIndexPathFactory` and add it as an injected service.
+
+```c#
+    public class LocalIndexPathFactory : ILocalIndexPathFactory
+    {
+        private readonly IWebHostEnvironment _webHostEnvironment;
+
+        public LocalIndexPathFactory(IWebHostEnvironment webHostEnvironment)
+        {
+            _webHostEnvironment = webHostEnvironment;
+        }
+
+        public string GetLocalIndexPath()
+        {
+            return Path.Combine(_webHostEnvironment.ContentRootPath, "App_Data", "index");
+        }
+    }
+```
 
 In order to query against the index there is a fluent API that allows you to pass in as many query types you want:
 
