@@ -28,7 +28,7 @@ namespace Lucene.Net.IndexProvider.Tests
         [Fact]
         public async Task Test_Paging_Functionality()
         {
-            var pagedPosts = 
+            var pagedPosts =
                 await _indexProvider.Search()
                     .Paged(2, 5)
                     .ListResult<BlogPost>();
@@ -50,96 +50,103 @@ namespace Lucene.Net.IndexProvider.Tests
         [Fact]
         public async Task Test_Filter_On_List()
         {
-            var taggedPost = 
+            var taggedPost =
                 await _indexProvider.Search()
                     .Should(() => new TermQuery(new Term("TagIds", "11")))
                     .ListResult<BlogPost>();
 
             Assert.Equal(1, taggedPost.Count);
             Assert.Equal("10", taggedPost.Hits[0].Hit.Id);
-        }         
-        
+        }
+
         [Fact]
         public async Task Test_Return_Multiple_By_Id()
         {
-            var taggedPost = 
+            var taggedPost =
                 await _indexProvider.Search()
                     .Should(() => new TermQuery(new Term("Id", "1")))
                     .Should(() => new TermQuery(new Term("Id", "2")))
                     .ListResult(typeof(BlogPost));
 
             Assert.Equal(2, taggedPost.Count);
-        }         
-        
+        }
+
         [Fact]
         public async Task Test_Returns_Single_Result()
         {
-            var taggedPost = 
+            var taggedPost =
                 await _indexProvider.Search()
                     .Must(() => new TermQuery(new Term("Id", "1")))
                     .SingleResult<BlogPost>();
 
             Assert.NotNull(taggedPost);
-        }         
-        
+        }
+
         [Fact]
         public async Task Test_Returns_Single_Result_Object()
         {
-            var taggedPost = 
+            var taggedPost =
                 await _indexProvider.Search()
                     .Must(() => new TermQuery(new Term("Id", "1")))
                     .SingleResult(typeof(BlogPost));
 
             Assert.NotNull(taggedPost);
-        }   
-        
+        }
+
         [Fact]
         public async Task Test_Returns_Single_Result_Object_Null()
         {
-            var taggedPost = 
+            var taggedPost =
                 await _indexProvider.Search()
                     .Must(() => new TermQuery(new Term("Id", "100")))
                     .SingleResult(typeof(BlogPost));
 
             Assert.Null(taggedPost);
-        }        
-        
+        }
+
         [Fact]
         public async Task Test_Sort_By_Date_Asc()
         {
-            var taggedPost = 
+            var taggedPost =
                 await _indexProvider.Search()
                     .Sort(() => new SortField("PublishedDate", SortFieldType.STRING, true))
                     .ListResult<BlogPost>();
 
             Assert.Equal("1", taggedPost.Hits.First().Hit.Id);
             Assert.Equal("3", taggedPost.Hits.Last().Hit.Id);
-        }         
-        
+        }
+
         [Fact]
         public async Task Test_Sort_By_Date_Desc()
         {
-            var taggedPost = 
+            var taggedPost =
                 await _indexProvider.Search()
                     .Sort(() => new SortField("PublishedDate", SortFieldType.STRING))
                     .ListResult<BlogPost>();
 
             Assert.Equal("3", taggedPost.Hits.First().Hit.Id);
             Assert.Equal("1", taggedPost.Hits.Last().Hit.Id);
-        } 
+        }
         
-        // TODO: figure out why phrase query isn't working
-        //[Fact]
-        //public async Task Test_Filter_Phrase()
-        //{
-        //    var listResult = 
-        //        await _indexProvider.Search()
-        //            .Phrase("Body", "My test body", OccurType.Must)
-        //            .ListResult<BlogPost>();
+        [Fact]
+        public async Task Test_Filter_Phrase()
+        {
+            var listResult =
+                await _indexProvider.Search()
+                    .Must(() =>
+                    {
+                        var query = new PhraseQuery()
+                        {
+                            new Term("Body", "My test body")
+                        };
 
-        //    Assert.Equal(1, listResult.Count);
-        //    Assert.Equal("9", listResult.Items[0].Id);
-        //}
+                        return query;
+                    })
+                    .ListResult<BlogPost>();
+
+            Assert.Equal(1, listResult.Count);
+            Assert.Equal("9", listResult.Hits[0].Hit.Id);
+        }
 
         [Fact]
         public void Test_Get_Document_By_Id()
@@ -158,8 +165,8 @@ namespace Lucene.Net.IndexProvider.Tests
 
             Assert.Equal(1, listResult.Count);
             Assert.Equal("9", listResult.Hits[0].Hit.Id);
-        }        
-        
+        }
+
         [Fact]
         public async Task Test_Fuzzy_Query()
         {
