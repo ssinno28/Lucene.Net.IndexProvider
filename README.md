@@ -6,7 +6,7 @@ A simple service that helps to abstract common operations when interacting with 
 It will need to be wired up with DI like so:
 
 ```c#
-            services.AddLuceneProvider("path/to/index");
+            services.AddLuceneProvider();
             services.AddLuceneDocumentMapper();
 ```
 
