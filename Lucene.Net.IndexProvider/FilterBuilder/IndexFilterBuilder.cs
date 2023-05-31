@@ -8,24 +8,24 @@ using Lucene.Net.Search;
 
 namespace Lucene.Net.IndexProvider.FilterBuilder
 {
-    public class FilterBuilder
+    public class IndexFilterBuilder
     {
         private readonly IIndexProvider _indexProvider;
 
-        private readonly List<Filter> _filters = new List<Filter>();
+        private readonly List<IndexFilter> _filters = new List<IndexFilter>();
         private readonly List<Sort> _sorts = new List<Sort>();
 
         private int? _page = null;
         private int? _pageSize = null;
 
-        public FilterBuilder(IIndexProvider indexProvider)
+        public IndexFilterBuilder(IIndexProvider indexProvider)
         {
             _indexProvider = indexProvider;
         }
 
-        public FilterBuilder Must(Func<Query> getQueryAction)
+        public IndexFilterBuilder Must(Func<Query> getQueryAction)
         {
-            _filters.Add(new Filter
+            _filters.Add(new IndexFilter
             {
                 OccurType = Occur.MUST,
                 Query = getQueryAction()
@@ -34,9 +34,9 @@ namespace Lucene.Net.IndexProvider.FilterBuilder
             return this;
         }        
         
-        public FilterBuilder Should(Func<Query> getQueryAction)
+        public IndexFilterBuilder Should(Func<Query> getQueryAction)
         {
-            _filters.Add(new Filter
+            _filters.Add(new IndexFilter
             {
                 OccurType = Occur.SHOULD,
                 Query = getQueryAction()
@@ -45,9 +45,9 @@ namespace Lucene.Net.IndexProvider.FilterBuilder
             return this;
         }        
         
-        public FilterBuilder MustNot(Func<Query> getQueryAction)
+        public IndexFilterBuilder MustNot(Func<Query> getQueryAction)
         {
-            _filters.Add(new Filter
+            _filters.Add(new IndexFilter
             {
                 OccurType = Occur.MUST_NOT,
                 Query = getQueryAction()
@@ -56,7 +56,7 @@ namespace Lucene.Net.IndexProvider.FilterBuilder
             return this;
         }
 
-        public FilterBuilder Sort(Func<SortField> getSortFunc)
+        public IndexFilterBuilder Sort(Func<SortField> getSortFunc)
         {
             _sorts.Add(new Sort()
             {
@@ -66,14 +66,14 @@ namespace Lucene.Net.IndexProvider.FilterBuilder
             return this;
         }
 
-        public FilterBuilder Paged(int page, int pageSize)
+        public IndexFilterBuilder Paged(int page, int pageSize)
         {
             _page = page;
             _pageSize = pageSize;
             return this;
         }
 
-        public async Task<ListResult<T>> ListResult<T>()
+        public async Task<IndexListResult<T>> ListResult<T>()
         {
             return await _indexProvider.GetByFilters<T>(_filters, _sorts, _page, _pageSize);
         }    
@@ -90,7 +90,7 @@ namespace Lucene.Net.IndexProvider.FilterBuilder
             return results.Hits.FirstOrDefault();
         }
 
-        public async Task<ListResult> ListResult(Type contentType)
+        public async Task<IndexListResult> ListResult(Type contentType)
         {
             return await _indexProvider.GetByFilters(_filters, _sorts, contentType, _page, _pageSize);
         }

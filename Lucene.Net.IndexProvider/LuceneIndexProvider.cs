@@ -16,7 +16,7 @@ using Lucene.Net.Search;
 using Lucene.Net.Store;
 using Microsoft.Extensions.Logging;
 using Directory = Lucene.Net.Store.Directory;
-using Filter = Lucene.Net.IndexProvider.FilterBuilder.Filter;
+using IndexFilter = Lucene.Net.IndexProvider.FilterBuilder.IndexFilter;
 using Sort = Lucene.Net.IndexProvider.FilterBuilder.Sort;
 
 namespace Lucene.Net.IndexProvider
@@ -162,12 +162,12 @@ namespace Lucene.Net.IndexProvider
         /// Exposes a fluent api for searching against th index
         /// </summary>
         /// <returns></returns>
-        public FilterBuilder.FilterBuilder Search()
+        public FilterBuilder.IndexFilterBuilder Search()
         {
-            return new FilterBuilder.FilterBuilder(this);
+            return new FilterBuilder.IndexFilterBuilder(this);
         }
 
-        public async Task<ListResult<T>> GetByFilters<T>(IList<Filter> filters, IList<Sort> sorts, int? page = null, int? pageSize = null)
+        public async Task<IndexListResult<T>> GetByFilters<T>(IList<IndexFilter> filters, IList<Sort> sorts, int? page = null, int? pageSize = null)
         {
             var contentType = typeof(T);
             var listResult = await GetByFilters(filters, sorts, contentType, page, pageSize);
@@ -182,7 +182,7 @@ namespace Lucene.Net.IndexProvider
                 });
             }
 
-            return new ListResult<T>
+            return new IndexListResult<T>
             {
                 Count = listResult.Count,
                 Hits = indexResults,
@@ -191,7 +191,7 @@ namespace Lucene.Net.IndexProvider
         }
 
 
-        public async Task<ListResult> GetByFilters(IList<Filter> filters, IList<Sort> sorts, Type contentType, int? page = null, int? pageSize = null)
+        public async Task<IndexListResult> GetByFilters(IList<IndexFilter> filters, IList<Sort> sorts, Type contentType, int? page = null, int? pageSize = null)
         {
             var directory = GetDirectory(contentType.Name);
             List<IndexResult<object>> indexResults = new List<IndexResult<object>>();
@@ -259,7 +259,7 @@ namespace Lucene.Net.IndexProvider
                     }
                 }
 
-                return new ListResult
+                return new IndexListResult
                 {
                     Hits = indexResults,
                     Count = count,

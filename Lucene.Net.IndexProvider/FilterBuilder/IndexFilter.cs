@@ -2,7 +2,7 @@
 
 namespace Lucene.Net.IndexProvider.FilterBuilder
 {
-    public class Filter
+    public class IndexFilter
     {
         public Query Query { get; set; }
         public Occur OccurType { get; set; }
