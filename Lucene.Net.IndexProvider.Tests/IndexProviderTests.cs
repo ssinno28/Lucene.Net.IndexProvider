@@ -154,6 +154,13 @@ namespace Lucene.Net.IndexProvider.Tests
             var blogPost = _indexProvider.GetDocumentById<BlogPost>("8");
             Assert.Equal("8", blogPost.Hit.Id);
         }
+        
+        [Fact]
+        public void Test_Get_Document_By_Id_Not_Found()
+        {
+            var blogPost = _indexProvider.GetDocumentById<BlogPost>("13");
+            Assert.Equal(null, blogPost.Hit);
+        }
 
         [Fact]
         public async Task Test_Search_Nested_Properties()

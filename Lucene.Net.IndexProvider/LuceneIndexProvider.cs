@@ -32,9 +32,9 @@ namespace Lucene.Net.IndexProvider
         private readonly ILocalIndexPathFactory _localIndexPathFactory;
 
         public LuceneIndexProvider(
-            LuceneConfig luceneConfig, 
-            IDocumentMapper mapper, 
-            ILoggerFactory loggerFactory, 
+            LuceneConfig luceneConfig,
+            IDocumentMapper mapper,
+            ILoggerFactory loggerFactory,
             ILocalIndexPathFactory localIndexPathFactory)
         {
             _luceneConfig = luceneConfig;
@@ -85,12 +85,21 @@ namespace Lucene.Net.IndexProvider
                     var query = new TermQuery(new Term(GetKeyName(contentType), id));
                     var hits = indexSearcher.Search(query, _luceneConfig.BatchSize);
 
-                    var doc = indexSearcher.Doc(hits.ScoreDocs[0].Doc);
-                    var mappedDocument = _mapper.Map(doc, contentType);
-                    indexResult = new IndexResult<object>
+                    if (hits.ScoreDocs.Length > 0)
                     {
-                        Hit = mappedDocument,
-                        Score = hits.ScoreDocs[0].Score
+                        var doc = indexSearcher.Doc(hits.ScoreDocs[0].Doc);
+                        var mappedDocument = _mapper.Map(doc, contentType);
+                        indexResult = new IndexResult<object>
+                        {
+                            Hit = mappedDocument,
+                            Score = hits.ScoreDocs[0].Score
+                        };
+                    }
+
+                    return new IndexResult<object>
+                    {
+                        Hit = null,
+                        Score = 0
                     };
                 }
             }
