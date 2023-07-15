@@ -185,6 +185,13 @@ namespace Lucene.Net.IndexProvider.Tests
             Assert.Equal(1, listResult.Count);
             Assert.Equal("9", listResult.Hits[0].Hit.Id);
         }
+        
+        [Fact]
+        public async Task Test_Check_index()
+        {
+            var result = await _indexProvider.CheckHealth<BlogPost>();
+            Assert.True(result);
+        }
 
         public async Task InitializeAsync()
         {

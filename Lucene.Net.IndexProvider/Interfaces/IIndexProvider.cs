@@ -19,6 +19,7 @@ namespace Lucene.Net.IndexProvider.Interfaces
         Task<bool> Update(object contentItem, string id);
         IndexResult<object> GetDocumentById(Type contentType, string id);
         IndexResult<T> GetDocumentById<T>(string id);
+        Task<bool> CheckHealth<T>();
         Task<bool> SwapIndex(string tempIndex, string index);
         FilterBuilder.IndexFilterBuilder Search();
         Task<IndexListResult<T>> GetByFilters<T>(IList<IndexFilter> filters, IList<Sort> sorts, int? page = null, int? pageSize = null);

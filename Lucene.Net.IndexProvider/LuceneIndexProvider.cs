@@ -10,11 +10,13 @@ using Lucene.Net.DocumentMapper.Interfaces;
 using Lucene.Net.Documents;
 using Lucene.Net.Index;
 using Lucene.Net.IndexProvider.FilterBuilder;
+using Lucene.Net.IndexProvider.Helpers;
 using Lucene.Net.IndexProvider.Interfaces;
 using Lucene.Net.IndexProvider.Models;
 using Lucene.Net.Search;
 using Lucene.Net.Store;
 using Microsoft.Extensions.Logging;
+using static Lucene.Net.Documents.Field;
 using Directory = Lucene.Net.Store.Directory;
 using IndexFilter = Lucene.Net.IndexProvider.FilterBuilder.IndexFilter;
 using Sort = Lucene.Net.IndexProvider.FilterBuilder.Sort;
@@ -128,6 +130,28 @@ namespace Lucene.Net.IndexProvider
             };
         }
 
+        public Task<bool> CheckHealth<T>()
+        {
+            return Task.Run(async () =>
+            {
+                Type contentType = typeof(T);
+
+                string localPath = _localIndexPathFactory.GetLocalIndexPath();
+                string tempIndexPath = $"{contentType.Name}_{Guid.NewGuid()}";
+
+                string tempIndexPathFull = Path.Combine(localPath, tempIndexPath);
+                string indexFullPath = Path.Combine(localPath, contentType.Name);
+
+                FileHelpers.CopyFilesRecursively(indexFullPath, tempIndexPathFull);
+                var directory = GetDirectory(tempIndexPath);
+                CheckIndex checkIndex = new CheckIndex(directory);
+                var result = checkIndex.DoCheckIndex();
+
+                await DeleteIndex(tempIndexPath);
+                return result.Clean;
+            });
+        }
+
         private string GetKeyName(Type contentType)
         {
             var keyProperty =
@@ -172,9 +196,9 @@ namespace Lucene.Net.IndexProvider
         /// Exposes a fluent api for searching against th index
         /// </summary>
         /// <returns></returns>
-        public FilterBuilder.IndexFilterBuilder Search()
+        public IndexFilterBuilder Search()
         {
-            return new FilterBuilder.IndexFilterBuilder(this);
+            return new IndexFilterBuilder(this);
         }
 
         public async Task<IndexListResult<T>> GetByFilters<T>(IList<IndexFilter> filters, IList<Sort> sorts, int? page = null, int? pageSize = null)
