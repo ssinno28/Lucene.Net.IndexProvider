@@ -16,7 +16,6 @@ using Lucene.Net.IndexProvider.Models;
 using Lucene.Net.Search;
 using Lucene.Net.Store;
 using Microsoft.Extensions.Logging;
-using static Lucene.Net.Documents.Field;
 using Directory = Lucene.Net.Store.Directory;
 using IndexFilter = Lucene.Net.IndexProvider.FilterBuilder.IndexFilter;
 using Sort = Lucene.Net.IndexProvider.FilterBuilder.Sort;
@@ -383,7 +382,11 @@ namespace Lucene.Net.IndexProvider
             {
                 string localPath = _localIndexPathFactory.GetLocalIndexPath();
                 var directory = new DirectoryInfo(Path.Combine(localPath, indexName));
-                if (!directory.Exists) return;
+                if (!directory.Exists)
+                {
+                    _logger.LogWarning($"Could not find directory {indexName} to delete.");
+                    return;
+                }
 
                 directory.Delete(true);
             });

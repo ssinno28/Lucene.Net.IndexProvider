@@ -10,6 +10,7 @@ using Lucene.Net.IndexProvider.Helpers;
 using Lucene.Net.IndexProvider.Interfaces;
 using Lucene.Net.IndexProvider.Tests.Models;
 using Lucene.Net.Search;
+using Lucene.Net.Util;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -127,7 +128,19 @@ namespace Lucene.Net.IndexProvider.Tests
             Assert.Equal("3", taggedPost.Hits.First().Hit.Id);
             Assert.Equal("1", taggedPost.Hits.Last().Hit.Id);
         }
-        
+
+        [Fact]
+        public async Task Test_Sort_By_DateTimeOffset_Desc()
+        {
+            var taggedPost =
+                await _indexProvider.Search()
+                    .Sort(() => new SortField(nameof(BlogPost.PublishedDateOffset), SortFieldType.STRING))
+                    .ListResult<BlogPost>();
+
+            Assert.Equal("3", taggedPost.Hits.First().Hit.Id);
+            Assert.Equal("1", taggedPost.Hits.Last().Hit.Id);
+        }
+
         [Fact]
         public async Task Test_Filter_Phrase()
         {
@@ -149,12 +162,39 @@ namespace Lucene.Net.IndexProvider.Tests
         }
 
         [Fact]
+        public async Task Test_Filter_By_DateRange()
+        {
+            var listResult =
+                await _indexProvider.Search()
+                    .Must(() =>
+                    {
+                        var dateTimeOffset =
+                            new DateTimeOffset(2023, 8, 22, 1, 0, 0, new TimeSpan(-5, 0, 0));
+
+                        var dateString = dateTimeOffset.AddDays(-10).ToString("yyyyMMddHHmmss.fffzzzzz");
+                        var upperDateString = dateTimeOffset.ToString("yyyyMMddHHmmss.fffzzzzz");
+                        var rangeQuery =
+                            TermRangeQuery.NewStringRange(
+                                nameof(BlogPost.PublishedDateOffset), 
+                                dateString, 
+                                upperDateString, 
+                                true,
+                                true);
+
+                        return rangeQuery;
+                    })
+                    .ListResult<BlogPost>();
+
+            Assert.Equal(5, listResult.Count);
+        }
+
+        [Fact]
         public void Test_Get_Document_By_Id()
         {
             var blogPost = _indexProvider.GetDocumentById<BlogPost>("8");
             Assert.Equal("8", blogPost.Hit.Id);
         }
-        
+
         [Fact]
         public void Test_Get_Document_By_Id_Not_Found()
         {
@@ -185,7 +225,7 @@ namespace Lucene.Net.IndexProvider.Tests
             Assert.Equal(1, listResult.Count);
             Assert.Equal("9", listResult.Hits[0].Hit.Id);
         }
-        
+
         [Fact]
         public async Task Test_Check_index()
         {
@@ -212,55 +252,66 @@ namespace Lucene.Net.IndexProvider.Tests
             var dateTime = DateTime.Now;
             _indexProvider = _serviceProvider.GetService<IIndexProvider>();
             await _indexProvider.CreateIndexIfNotExists(typeof(BlogPost));
+
+            var dateTimeOffset = new DateTimeOffset(2023, 8, 22, 1, 0, 0, new TimeSpan(-5, 0, 0));
+
             await _indexProvider.Store(new List<BlogPost>
             {
                 new BlogPost
                 {
                     Name = "My Test Blog Post",
                     Id = "1",
-                    PublishedDate = DateTime.Now.AddDays(-1)
+                    PublishedDate = DateTime.Now.AddDays(-1),
+                    PublishedDateOffset = dateTimeOffset.AddDays(-1)
                 },
                 new BlogPost
                 {
                     Name = "My Test Blog Post",
                     Id = "2",
-                    PublishedDate = DateTime.Now.AddDays(-100)
+                    PublishedDate = DateTime.Now.AddDays(-100),
+                    PublishedDateOffset = dateTimeOffset.AddDays(-100)
                 },
                 new BlogPost
                 {
                     Name = "My Test Blog Post",
                     Id = "3",
-                    PublishedDate = DateTime.Now.AddDays(-120)
+                    PublishedDate = DateTime.Now.AddDays(-120),
+                    PublishedDateOffset = dateTimeOffset.AddDays(-120)
                 },
                 new BlogPost
                 {
                     Name = "My Test Blog Post",
                     Id = "4",
-                    PublishedDate = DateTime.Now.AddDays(-11)
+                    PublishedDate = DateTime.Now.AddDays(-11),
+                    PublishedDateOffset = dateTimeOffset.AddDays(-11)
                 },
                 new BlogPost
                 {
                     Name = "My Test Blog Post",
                     Id = "5",
-                    PublishedDate = DateTime.Now.AddDays(-19)
+                    PublishedDate = DateTime.Now.AddDays(-19),
+                    PublishedDateOffset = dateTimeOffset.AddDays(-19)
                 },
                 new BlogPost
                 {
                     Name = "My Test Blog Post",
                     Id = "6",
-                    PublishedDate = DateTime.Now.AddDays(-13)
+                    PublishedDate = DateTime.Now.AddDays(-13),
+                    PublishedDateOffset = dateTimeOffset.AddDays(-13)
                 },
                 new BlogPost
                 {
                     Name = "My Test Blog Post",
                     Id = "7",
-                    PublishedDate = DateTime.Now.AddDays(-7)
+                    PublishedDate = DateTime.Now.AddDays(-7),
+                    PublishedDateOffset = dateTimeOffset.AddDays(-7)
                 },
                 new BlogPost
                 {
                     Name = "My Test Blog Post",
                     Id = "8",
-                    PublishedDate = DateTime.Now.AddDays(-8)
+                    PublishedDate = DateTime.Now.AddDays(-8),
+                    PublishedDateOffset = dateTimeOffset.AddDays(-8)
                 },
                 new BlogPost
                 {
@@ -275,7 +326,8 @@ namespace Lucene.Net.IndexProvider.Tests
                             Name = "my-test-tag"
                         }
                     },
-                    PublishedDate = DateTime.Now.AddDays(-9)
+                    PublishedDate = DateTime.Now.AddDays(-9),
+                    PublishedDateOffset = dateTimeOffset.AddDays(-9)
                 },
                 new BlogPost
                 {
@@ -286,7 +338,8 @@ namespace Lucene.Net.IndexProvider.Tests
                         "11",
                         "2"
                     },
-                    PublishedDate = DateTime.Now.AddDays(-10)
+                    PublishedDate = DateTime.Now.AddDays(-10),
+                    PublishedDateOffset = dateTimeOffset.AddDays(-10)
                 }
             });
         }

@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Lucene.Net.DocumentMapper" Version="1.0.13" />
+    <PackageReference Include="Lucene.Net.DocumentMapper" Version="1.0.15" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="7.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.6.0" />
     <PackageReference Include="Moq" Version="4.18.4" />
