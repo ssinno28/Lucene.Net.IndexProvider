@@ -22,7 +22,7 @@ varr indexConfigManager = serviceProvider.GetService<IIndexConfigurationManager>
                 LuceneVersion = LuceneVersion.LUCENE_48,
                 IndexTypes = new List<Type>()
                 {
-                    typeof(BlogPost),
+                    nameof(BlogPost),
                 }
             });
 
@@ -58,5 +58,4 @@ In order to query against the index there is a fluent API that allows you to pas
 ```
 
 You can concatenate as many Must, Should and MustNot queries as you would like and call ListResults at the end to get the items and count.
-
 
