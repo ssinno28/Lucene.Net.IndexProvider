@@ -20,7 +20,7 @@ varr indexConfigManager = serviceProvider.GetService<IIndexConfigurationManager>
             {
                 BatchSize = 500000,
                 LuceneVersion = LuceneVersion.LUCENE_48,
-                IndexTypes = new List<Type>()
+                Indexes = new List<Type>()
                 {
                     nameof(BlogPost),
                 }
