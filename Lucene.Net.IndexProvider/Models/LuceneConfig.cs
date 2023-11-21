@@ -8,6 +8,6 @@ namespace Lucene.Net.IndexProvider.Models
     {
         public LuceneVersion LuceneVersion { get; set; }
         public int BatchSize { get; set; }
-        public IList<Type> IndexTypes { get; set; }
+        public IList<string> Indexes { get; set; }
     }
 }

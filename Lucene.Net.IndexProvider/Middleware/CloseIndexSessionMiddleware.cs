@@ -29,9 +29,9 @@ namespace Lucene.Net.IndexProvider.Middleware
             {
                 foreach (var config in _configurationManager.Configurations)
                 {
-                    foreach (var configIndexType in config.IndexTypes)
+                    foreach (var index in config.Indexes)
                     {
-                        _sessionManager.CloseSessionOn(configIndexType.Name);
+                        _sessionManager.CloseSessionOn(index);
                     }
                 }
             }

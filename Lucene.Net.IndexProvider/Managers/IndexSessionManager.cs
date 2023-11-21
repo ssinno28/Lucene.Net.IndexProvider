@@ -32,8 +32,7 @@ public class IndexSessionManager : IIndexSessionManager
     {
         if (!ContextSessions.TryGetValue(indexName, out var context))
         {
-            var config =
-                _configurationManager.Configurations.First(x => x.IndexTypes.Any(t => t.Name.Equals(indexName)));
+            var config = _configurationManager.GetConfiguration(indexName);
 
             var analyzer = new StandardAnalyzer(config.LuceneVersion);
             var indexConfig = new IndexWriterConfig(config.LuceneVersion, analyzer);
@@ -55,8 +54,8 @@ public class IndexSessionManager : IIndexSessionManager
 
     public IndexWriter GetTransientSession(string indexName)
     {
-        var config =
-            _configurationManager.Configurations.First(x => x.IndexTypes.Any(t => t.Name.Equals(indexName)));
+        var config = _configurationManager.GetConfiguration(indexName);
+
         var analyzer = new StandardAnalyzer(config.LuceneVersion);
         var indexConfig = new IndexWriterConfig(config.LuceneVersion, analyzer);
         var writer = new IndexWriter(GetDirectory(indexName), indexConfig);

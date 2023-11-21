@@ -35,7 +35,7 @@ public class IndexConfigurationManager : IIndexConfigurationManager
 
     public LuceneConfig GetConfiguration(string indexName)
     {
-        var config = Configurations.First(x => x.IndexTypes.Any(t => t.Name.Equals(indexName)));
+        var config = Configurations.First(x => x.Indexes.Any(t => t.Equals(indexName)));
         return config;
     }
 }

@@ -255,7 +255,7 @@ namespace Lucene.Net.IndexProvider.Tests
             var sessionManager = _serviceProvider.GetService<IIndexSessionManager>();
             configurationManager.AddConfiguration(new LuceneConfig()
             {
-                IndexTypes = new[] { typeof(BlogPost) },
+                Indexes = new[] { nameof(BlogPost) },
                 BatchSize = 50000,
                 LuceneVersion = LuceneVersion.LUCENE_48
             });
