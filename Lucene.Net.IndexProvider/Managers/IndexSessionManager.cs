@@ -65,7 +65,7 @@ public class IndexSessionManager : IIndexSessionManager
 
     public void CloseSessionOn(string indexName)
     {
-        if (ContextSessions.TryGetValue(indexName, out var context))
+        if (ContextSessions.TryGetValue(indexName, out var context) && !context.IsClosed)
         {
             context.Commit();
             context.Dispose();
