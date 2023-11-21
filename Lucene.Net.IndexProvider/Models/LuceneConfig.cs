@@ -1,4 +1,6 @@
-﻿using Lucene.Net.Util;
+﻿using System;
+using System.Collections.Generic;
+using Lucene.Net.Util;
 
 namespace Lucene.Net.IndexProvider.Models
 {
@@ -6,5 +8,6 @@ namespace Lucene.Net.IndexProvider.Models
     {
         public LuceneVersion LuceneVersion { get; set; }
         public int BatchSize { get; set; }
+        public IList<Type> IndexTypes { get; set; }
     }
 }

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Mime;
 using System.Reflection;
 using System.Threading.Tasks;
 using Lucene.Net.Analysis.Standard;
@@ -27,20 +28,23 @@ namespace Lucene.Net.IndexProvider
     /// </summary>
     public class LuceneIndexProvider : IIndexProvider
     {
-        private readonly LuceneConfig _luceneConfig;
         private readonly IDocumentMapper _mapper;
         private readonly ILogger<LuceneIndexProvider> _logger;
         private readonly ILocalIndexPathFactory _localIndexPathFactory;
+        private readonly IIndexSessionManager _sessionManager;
+        private readonly IIndexConfigurationManager _configurationManager;
 
         public LuceneIndexProvider(
-            LuceneConfig luceneConfig,
             IDocumentMapper mapper,
             ILoggerFactory loggerFactory,
-            ILocalIndexPathFactory localIndexPathFactory)
+            ILocalIndexPathFactory localIndexPathFactory,
+            IIndexSessionManager sessionManager, 
+            IIndexConfigurationManager configurationManager)
         {
-            _luceneConfig = luceneConfig;
             _mapper = mapper;
             _localIndexPathFactory = localIndexPathFactory;
+            _sessionManager = sessionManager;
+            _configurationManager = configurationManager;
             _logger = loggerFactory.CreateLogger<LuceneIndexProvider>();
 
             // Ensures the directory exists
@@ -76,6 +80,7 @@ namespace Lucene.Net.IndexProvider
         {
             var directory = GetDirectory(contentType.Name);
             IndexResult<object> indexResult = null;
+            var luceneConfig = _configurationManager.GetConfiguration(contentType.Name);
 
             try
             {
@@ -84,7 +89,7 @@ namespace Lucene.Net.IndexProvider
                     var indexSearcher = new IndexSearcher(indexReader);
 
                     var query = new TermQuery(new Term(GetKeyName(contentType), id));
-                    var hits = indexSearcher.Search(query, _luceneConfig.BatchSize);
+                    var hits = indexSearcher.Search(query, luceneConfig.BatchSize);
 
                     if (hits.ScoreDocs.Length == 0)
                     {
@@ -228,6 +233,7 @@ namespace Lucene.Net.IndexProvider
         {
             var directory = GetDirectory(contentType.Name);
             List<IndexResult<object>> indexResults = new List<IndexResult<object>>();
+            var luceneConfig = _configurationManager.GetConfiguration(contentType.Name);
 
             return await Task.Run(() =>
             {
@@ -257,7 +263,7 @@ namespace Lucene.Net.IndexProvider
                         sort.SetSort(SortField.FIELD_SCORE);
                     }
 
-                    var hits = indexSearcher.Search(query, _luceneConfig.BatchSize, sort);
+                    var hits = indexSearcher.Search(query, luceneConfig.BatchSize, sort);
                     count = hits.TotalHits;
                     maxScore = hits.MaxScore;
 
@@ -314,19 +320,13 @@ namespace Lucene.Net.IndexProvider
             {
                 try
                 {
-                    using (var analyzer = new StandardAnalyzer(_luceneConfig.LuceneVersion))
-                    {
-                        var config = new IndexWriterConfig(_luceneConfig.LuceneVersion, analyzer);
-                        using (var writer = new IndexWriter(GetDirectory(indexName), config))
-                        {
-                            var doc = _mapper.Map(contentItem);
-                            writer.UpdateDocument(new Term(GetKeyName(contentItem.GetType()), id), doc);
+                    var writer = _sessionManager.GetSessionFrom(indexName);
+                    var doc = _mapper.Map(contentItem);
+                    writer.UpdateDocument(new Term(GetKeyName(contentItem.GetType()), id), doc);
 
-                            if (writer.HasDeletions())
-                            {
-                                writer.ForceMergeDeletes();
-                            }
-                        }
+                    if (writer.HasDeletions())
+                    {
+                        writer.ForceMergeDeletes();
                     }
 
                     return true;
@@ -356,14 +356,15 @@ namespace Lucene.Net.IndexProvider
         /// <returns></returns>
         public Task CreateIndexIfNotExists(string indexName)
         {
+            var luceneConfig = _configurationManager.GetConfiguration(indexName);
             bool exists = DirectoryReader.IndexExists(GetDirectory(indexName));
             if (exists) return Task.FromResult(0);
 
             return Task.Run(() =>
             {
-                using (var analyzer = new StandardAnalyzer(_luceneConfig.LuceneVersion))
+                using (var analyzer = new StandardAnalyzer(luceneConfig.LuceneVersion))
                 {
-                    var config = new IndexWriterConfig(_luceneConfig.LuceneVersion, analyzer);
+                    var config = new IndexWriterConfig(luceneConfig.LuceneVersion, analyzer);
                     using (new IndexWriter(GetDirectory(indexName), config))
                     {
                     }
@@ -420,23 +421,17 @@ namespace Lucene.Net.IndexProvider
 
             return Task.Run(() =>
             {
-                using (var analyzer = new StandardAnalyzer(_luceneConfig.LuceneVersion))
+                var writer = _sessionManager.GetSessionFrom(indexName);
+                foreach (var contentItem in contentItems)
                 {
-                    var config = new IndexWriterConfig(_luceneConfig.LuceneVersion, analyzer);
-                    using (var writer = new IndexWriter(GetDirectory(indexName), config))
+                    try
                     {
-                        foreach (var contentItem in contentItems)
-                        {
-                            try
-                            {
-                                var doc = _mapper.Map(contentItem);
-                                writer.AddDocument(doc);
-                            }
-                            catch (Exception e)
-                            {
-                                _logger.LogError(e, $"Could not add document to index");
-                            }
-                        }
+                        var doc = _mapper.Map(contentItem);
+                        writer.AddDocument(doc);
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.LogError(e, $"Could not add document to index");
                     }
                 }
             });
@@ -474,17 +469,11 @@ namespace Lucene.Net.IndexProvider
         {
             return Task.Run(() =>
             {
-                using (var analyzer = new StandardAnalyzer(_luceneConfig.LuceneVersion))
+                var writer = _sessionManager.GetSessionFrom(contentType.Name);
+                writer.DeleteDocuments(new Term(GetKeyName(contentType), documentId));
+                if (writer.HasDeletions())
                 {
-                    var config = new IndexWriterConfig(_luceneConfig.LuceneVersion, analyzer);
-                    using (var writer = new IndexWriter(GetDirectory(contentType.Name), config))
-                    {
-                        writer.DeleteDocuments(new Term(GetKeyName(contentType), documentId));
-                        if (writer.HasDeletions())
-                        {
-                            writer.ForceMergeDeletes();
-                        }
-                    }
+                    writer.ForceMergeDeletes();
                 }
             });
         }

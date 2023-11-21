@@ -1,8 +1,7 @@
 ﻿using Lucene.Net.IndexProvider.Interfaces;
-using Lucene.Net.IndexProvider.Models;
-using Lucene.Net.Search;
-using Lucene.Net.Util;
+using Lucene.Net.IndexProvider.Managers;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Lucene.Net.IndexProvider.Helpers
 {
@@ -10,13 +9,9 @@ namespace Lucene.Net.IndexProvider.Helpers
     {
         public static IServiceCollection AddLuceneProvider(this IServiceCollection services)
         {
-            var luceneConfig = new LuceneConfig
-            {
-                BatchSize = BooleanQuery.MaxClauseCount,
-                LuceneVersion = LuceneVersion.LUCENE_48
-            };
+            services.TryAddSingleton<IIndexSessionManager, IndexSessionManager>();
+            services.TryAddSingleton<IIndexConfigurationManager, IndexConfigurationManager>();
 
-            services.AddSingleton(luceneConfig);
             services.AddScoped<IIndexProvider, LuceneIndexProvider>();  
 
             return services;

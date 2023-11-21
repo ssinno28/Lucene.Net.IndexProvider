@@ -8,6 +8,7 @@ using Lucene.Net.DocumentMapper.Helpers;
 using Lucene.Net.Index;
 using Lucene.Net.IndexProvider.Helpers;
 using Lucene.Net.IndexProvider.Interfaces;
+using Lucene.Net.IndexProvider.Models;
 using Lucene.Net.IndexProvider.Tests.Models;
 using Lucene.Net.Search;
 using Lucene.Net.Util;
@@ -175,9 +176,9 @@ namespace Lucene.Net.IndexProvider.Tests
                         var upperDateString = dateTimeOffset.ToString("yyyyMMddHHmmss.fffzzzzz");
                         var rangeQuery =
                             TermRangeQuery.NewStringRange(
-                                nameof(BlogPost.PublishedDateOffset), 
-                                dateString, 
-                                upperDateString, 
+                                nameof(BlogPost.PublishedDateOffset),
+                                dateString,
+                                upperDateString,
                                 true,
                                 true);
 
@@ -244,10 +245,20 @@ namespace Lucene.Net.IndexProvider.Tests
             var services = new ServiceCollection()
                 .AddLuceneDocumentMapper()
                 .AddLuceneProvider()
-                .AddLogging(x => x.AddConsole());
+                .AddLogging(x => x.AddConsole())
+                .AddHttpContextAccessor();
 
             services.Add(new ServiceDescriptor(typeof(ILocalIndexPathFactory), _mockLocalIndexPathFactory.Object));
             _serviceProvider = services.BuildServiceProvider();
+
+            var configurationManager = _serviceProvider.GetService<IIndexConfigurationManager>();
+            var sessionManager = _serviceProvider.GetService<IIndexSessionManager>();
+            configurationManager.AddConfiguration(new LuceneConfig()
+            {
+                IndexTypes = new[] { typeof(BlogPost) },
+                BatchSize = 50000,
+                LuceneVersion = LuceneVersion.LUCENE_48
+            });
 
             var dateTime = DateTime.Now;
             _indexProvider = _serviceProvider.GetService<IIndexProvider>();
@@ -342,6 +353,8 @@ namespace Lucene.Net.IndexProvider.Tests
                     PublishedDateOffset = dateTimeOffset.AddDays(-10)
                 }
             });
+
+            sessionManager.CloseSessionOn(nameof(BlogPost));
         }
 
         public async Task DisposeAsync()
