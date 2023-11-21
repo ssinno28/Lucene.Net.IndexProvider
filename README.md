@@ -9,7 +9,24 @@ It will need to be wired up with DI like so:
             services.AddLuceneProvider();
             services.AddLuceneDocumentMapper();
             
-            services.AddScoped<ILocalIndexPathFactory, LocalIndexPathFactory>();
+            services.AddSingleton<ILocalIndexPathFactory, LocalIndexPathFactory>();
+```
+
+In the configure app method in the Startup.cs file you will need to set up a config for each index and add the close session middleware: 
+
+```c#
+varr indexConfigManager = serviceProvider.GetService<IIndexConfigurationManager>();
+            indexConfigManager.AddConfiguration(new LuceneConfig()
+            {
+                BatchSize = 500000,
+                LuceneVersion = LuceneVersion.LUCENE_48,
+                IndexTypes = new List<Type>()
+                {
+                    typeof(BlogPost),
+                }
+            });
+
+            app.UseMiddleware<CloseIndexSessionMiddleware>();
 ```
 
 You'll also want to setup a LocalIndexPathFactory class that implements `ILocalIndexPathFactory` and add it as an injected service.
