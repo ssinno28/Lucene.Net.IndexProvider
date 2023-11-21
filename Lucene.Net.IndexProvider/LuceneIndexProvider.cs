@@ -38,7 +38,7 @@ namespace Lucene.Net.IndexProvider
             IDocumentMapper mapper,
             ILoggerFactory loggerFactory,
             ILocalIndexPathFactory localIndexPathFactory,
-            IIndexSessionManager sessionManager, 
+            IIndexSessionManager sessionManager,
             IIndexConfigurationManager configurationManager)
         {
             _mapper = mapper;
@@ -311,6 +311,24 @@ namespace Lucene.Net.IndexProvider
                     MaxScore = maxScore
                 };
             });
+        }
+
+        public async Task<bool> Update(IList<object> contentItems)
+        {
+            foreach (var contentItem in contentItems)
+            {
+                var key = GetKeyName(contentItem.GetType());
+                var idPropInfo = contentItem.GetType().GetProperties().First(x => x.Name.Equals(key));
+                var id = idPropInfo.GetValue(contentItem).ToString();
+
+                var result = await Update(contentItem, id);
+                if (!result)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         /// <summary>
