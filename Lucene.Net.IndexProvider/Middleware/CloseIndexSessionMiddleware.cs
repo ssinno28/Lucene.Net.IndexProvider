@@ -1,6 +1,7 @@
 ﻿using System.Threading.Tasks;
 using Lucene.Net.IndexProvider.Interfaces;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 
 namespace Lucene.Net.IndexProvider.Middleware
 {
@@ -9,12 +10,14 @@ namespace Lucene.Net.IndexProvider.Middleware
         private readonly RequestDelegate _next;
         private readonly IIndexSessionManager _sessionManager;
         private readonly IIndexConfigurationManager _configurationManager;
+        private readonly ILogger<CloseIndexSessionMiddleware> _logger;
 
-        public CloseIndexSessionMiddleware(RequestDelegate next, IIndexSessionManager sessionManager, IIndexConfigurationManager configurationManager)
+        public CloseIndexSessionMiddleware(RequestDelegate next, IIndexSessionManager sessionManager, IIndexConfigurationManager configurationManager, ILogger<CloseIndexSessionMiddleware> logger)
         {
             _next = next;
             _sessionManager = sessionManager;
             _configurationManager = configurationManager;
+            _logger = logger;
         }
 
         public Task Invoke(HttpContext context) => InvokeAsync(context); // Stops VS from nagging about async method without ...Async suffix.
@@ -32,6 +35,7 @@ namespace Lucene.Net.IndexProvider.Middleware
                     foreach (var index in config.Indexes)
                     {
                         _sessionManager.CloseSessionOn(index);
+                        _logger.LogInformation($"Closed session for index {index}");
                     }
                 }
             }

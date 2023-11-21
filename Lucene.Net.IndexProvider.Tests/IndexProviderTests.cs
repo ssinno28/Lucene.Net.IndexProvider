@@ -26,6 +26,7 @@ namespace Lucene.Net.IndexProvider.Tests
         private IIndexProvider _indexProvider;
         private ServiceProvider _serviceProvider;
         private Mock<ILocalIndexPathFactory> _mockLocalIndexPathFactory;
+        private IIndexSessionManager _sessionManager;
 
         [Fact]
         public async Task Test_Paging_Functionality()
@@ -234,6 +235,25 @@ namespace Lucene.Net.IndexProvider.Tests
             Assert.True(result);
         }
 
+        [Fact]
+        public async Task Test_Update()
+        {
+            var blogPost = new BlogPost
+            {
+                Name = "My Test Blog Posts",
+                Id = "1",
+                PublishedDate = DateTime.Now.AddDays(-1),
+            };
+
+            var result = await _indexProvider.Update(blogPost, blogPost.Id);
+            Assert.True(result);
+            _sessionManager.CloseSessionOn(nameof(BlogPost));
+
+            var updatedBlogPost = _indexProvider.GetDocumentById<BlogPost>(blogPost.Id);
+
+            Assert.Equal("My Test Blog Posts", updatedBlogPost.Hit.Name);
+        }
+
         public async Task InitializeAsync()
         {
             _settingsPath = Path.GetFullPath(Path.Combine($"{Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)}", @"..\..\..\settings"));
@@ -252,7 +272,7 @@ namespace Lucene.Net.IndexProvider.Tests
             _serviceProvider = services.BuildServiceProvider();
 
             var configurationManager = _serviceProvider.GetService<IIndexConfigurationManager>();
-            var sessionManager = _serviceProvider.GetService<IIndexSessionManager>();
+            _sessionManager = _serviceProvider.GetService<IIndexSessionManager>();
             configurationManager.AddConfiguration(new LuceneConfig()
             {
                 Indexes = new[] { nameof(BlogPost) },
@@ -354,7 +374,7 @@ namespace Lucene.Net.IndexProvider.Tests
                 }
             });
 
-            sessionManager.CloseSessionOn(nameof(BlogPost));
+            _sessionManager.CloseSessionOn(nameof(BlogPost));
         }
 
         public async Task DisposeAsync()
