@@ -179,6 +179,12 @@ namespace Lucene.Net.IndexProvider
             return Task.Run(async () =>
             {
                 string localPath = _localIndexPathFactory.GetLocalIndexPath();
+                var tempIndexSession = _sessionManager.GetSessionFrom(tempIndex);
+                if (!tempIndexSession.IsClosed)
+                {
+                    tempIndexSession.Commit();
+                    tempIndexSession.Dispose();
+                }
 
                 string tempIndexPath = Path.Combine(localPath, tempIndex);
                 string indexPath = Path.Combine(localPath, index);
