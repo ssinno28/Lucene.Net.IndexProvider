@@ -1,32 +1,31 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using Lucene.Net.Analysis.Standard;
 using Lucene.Net.Index;
 using Lucene.Net.IndexProvider.Interfaces;
 using Lucene.Net.Store;
-using Microsoft.AspNetCore.Http;
 
 namespace Lucene.Net.IndexProvider.Managers;
 
 public class IndexSessionManager : IIndexSessionManager
 {
-    private readonly string SESSIONS_KEY = "INDEX_SESSIONS";
-
     private readonly IIndexConfigurationManager _configurationManager;
-    private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly IDictionary<string, IndexWriter> _backupContextSessions = new Dictionary<string, IndexWriter>();
     private readonly ILocalIndexPathFactory _localIndexPathFactory;
 
     public IndexSessionManager(
         IIndexConfigurationManager configurationManager,
-        IHttpContextAccessor httpContextAccessor,
         ILocalIndexPathFactory localIndexPathFactory)
     {
         _configurationManager = configurationManager;
-        _httpContextAccessor = httpContextAccessor;
         _localIndexPathFactory = localIndexPathFactory;
     }
+
+    private readonly Lazy<Dictionary<string, IndexWriter>> _contextSessions =
+        new Lazy<Dictionary<string, IndexWriter>>(
+            () => new Dictionary<string, IndexWriter> (StringComparer.OrdinalIgnoreCase));
+
+    public IDictionary<string, IndexWriter> ContextSessions => _contextSessions.Value;
 
     public IndexWriter GetSessionFrom(string indexName)
     {
@@ -70,25 +69,6 @@ public class IndexSessionManager : IIndexSessionManager
             context.Commit();
             context.Dispose();
             ContextSessions.Remove(indexName);
-        }
-    }
-
-    public IDictionary<string, IndexWriter> ContextSessions
-    {
-        get
-        {
-            if (_httpContextAccessor.HttpContext == null)
-            {
-                return _backupContextSessions;
-            }
-
-            if (!_httpContextAccessor.HttpContext.Items.TryGetValue(SESSIONS_KEY, out var sessions))
-            {
-                sessions = new Dictionary<string, IndexWriter>();
-                _httpContextAccessor.HttpContext.Items.Add(SESSIONS_KEY, sessions);
-            }
-
-            return (IDictionary<string, IndexWriter>)sessions;
         }
     }
 }
