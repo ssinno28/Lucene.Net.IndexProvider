@@ -269,7 +269,8 @@ namespace Lucene.Net.IndexProvider
                         sort.SetSort(SortField.FIELD_SCORE);
                     }
 
-                    var hits = indexSearcher.Search(query, luceneConfig.BatchSize, sort);
+                    var rewrittenSort = sort.Rewrite(indexSearcher);
+                    var hits = indexSearcher.Search(query, luceneConfig.BatchSize, rewrittenSort);
                     count = hits.TotalHits;
                     maxScore = hits.MaxScore;
 
