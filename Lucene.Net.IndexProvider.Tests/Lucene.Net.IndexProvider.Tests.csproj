@@ -29,4 +29,8 @@
     <ProjectReference Include="..\Lucene.Net.IndexProvider\Lucene.Net.IndexProvider.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Comparators\" />
+  </ItemGroup>
+
 </Project>

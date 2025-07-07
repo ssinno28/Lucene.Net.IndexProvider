@@ -23,4 +23,11 @@ public class BlogPostController : ControllerBase
         await _indexProvider.Store(new List<object>() { dto }, nameof(BlogPost));
         return dto;
     }
+
+    [HttpGet]
+    [Route("{id}")]
+    public BlogPost Get(string id)
+    {
+        return _indexProvider.GetDocumentById<BlogPost>(id).Hit;
+    }
 }

@@ -1,12 +1,14 @@
-﻿using System.Collections.Generic;
-using Lucene.Net.Index;
+﻿using Lucene.Net.Index;
+using Lucene.Net.IndexProvider.Models;
+using System.Collections.Generic;
 
 namespace Lucene.Net.IndexProvider.Interfaces;
 
 public interface IIndexSessionManager
 {
-    IndexWriter GetSessionFrom(string indexName);
-    IndexWriter GetTransientSession(string indexName);
-    void CloseSessionOn(string indexName);
-    IDictionary<string, IndexWriter> ContextSessions { get; }
+    LuceneSession GetSessionFrom(string indexName);
+    LuceneSession GetTransientSession(string indexName);
+    void Commit(string indexName);
+    IDictionary<string, LuceneSession> ContextSessions { get; }
+    void CloseSession(string indexName);
 }

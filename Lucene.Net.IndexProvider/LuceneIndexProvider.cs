@@ -78,41 +78,41 @@ namespace Lucene.Net.IndexProvider
         /// <returns></returns>
         public IndexResult<object> GetDocumentById(Type contentType, string id)
         {
-            var directory = GetDirectory(contentType.Name);
             IndexResult<object> indexResult = null;
             var luceneConfig = _configurationManager.GetConfiguration(contentType.Name);
 
+            var luceneSession = _sessionManager.GetSessionFrom(contentType.Name);
+            var indexSearcher = luceneSession.SearcherManager.Acquire();
+
             try
             {
-                using (var indexReader = DirectoryReader.Open(directory))
+                var query = new TermQuery(new Term(GetKeyName(contentType), id));
+                var hits = indexSearcher.Search(query, luceneConfig.BatchSize);
+
+                if (hits.ScoreDocs.Length == 0)
                 {
-                    var indexSearcher = new IndexSearcher(indexReader);
-
-                    var query = new TermQuery(new Term(GetKeyName(contentType), id));
-                    var hits = indexSearcher.Search(query, luceneConfig.BatchSize);
-
-                    if (hits.ScoreDocs.Length == 0)
-                    {
-                        return new IndexResult<object>
-                        {
-                            Hit = null,
-                            Score = 0
-                        };
-                    }
-
-                    var doc = indexSearcher.Doc(hits.ScoreDocs[0].Doc);
-                    var mappedDocument = _mapper.Map(doc, contentType);
                     return new IndexResult<object>
                     {
-                        Hit = mappedDocument,
-                        Score = hits.ScoreDocs[0].Score
+                        Hit = null,
+                        Score = 0
                     };
-
                 }
+
+                var doc = indexSearcher.Doc(hits.ScoreDocs[0].Doc);
+                var mappedDocument = _mapper.Map(doc, contentType);
+                return new IndexResult<object>
+                {
+                    Hit = mappedDocument,
+                    Score = hits.ScoreDocs[0].Score
+                };
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Could not get document for id {0} and content type", id, contentType.Name);
+            }
+            finally
+            {
+                luceneSession.SearcherManager.Release(indexSearcher);
             }
 
             return indexResult;
@@ -148,6 +148,7 @@ namespace Lucene.Net.IndexProvider
 
                 FileHelpers.CopyFilesRecursively(indexFullPath, tempIndexPathFull);
                 var directory = GetDirectory(tempIndexPath);
+
                 CheckIndex checkIndex = new CheckIndex(directory);
                 var result = checkIndex.DoCheckIndex();
 
@@ -179,12 +180,7 @@ namespace Lucene.Net.IndexProvider
             return Task.Run(async () =>
             {
                 string localPath = _localIndexPathFactory.GetLocalIndexPath();
-                var tempIndexSession = _sessionManager.GetSessionFrom(tempIndex);
-                if (!tempIndexSession.IsClosed)
-                {
-                    tempIndexSession.Commit();
-                    tempIndexSession.Dispose();
-                }
+                _sessionManager.CloseSession(tempIndex);
 
                 string tempIndexPath = Path.Combine(localPath, tempIndex);
                 string indexPath = Path.Combine(localPath, index);
@@ -237,7 +233,6 @@ namespace Lucene.Net.IndexProvider
 
         public async Task<IndexListResult> GetByFilters(IList<IndexFilter> filters, IList<Sort> sorts, Type contentType, int? page = null, int? pageSize = null)
         {
-            var directory = GetDirectory(contentType.Name);
             List<IndexResult<object>> indexResults = new List<IndexResult<object>>();
             var luceneConfig = _configurationManager.GetConfiguration(contentType.Name);
 
@@ -245,11 +240,13 @@ namespace Lucene.Net.IndexProvider
             {
                 int count;
                 float maxScore;
-                using (var indexReader = DirectoryReader.Open(directory))
-                {
-                    var indexSearcher = new IndexSearcher(indexReader);
-                    Query query = new MatchAllDocsQuery();
 
+                var luceneSession = _sessionManager.GetSessionFrom(contentType.Name);
+                var indexSearcher = luceneSession.SearcherManager.Acquire();
+
+                try
+                {
+                    Query query = new MatchAllDocsQuery();
                     if (filters.Any())
                     {
                         query = new BooleanQuery();
@@ -304,6 +301,15 @@ namespace Lucene.Net.IndexProvider
                         }
                     }
                 }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"Could not perform search against index: {contentType.Name}");
+                    return new IndexListResult();
+                }
+                finally
+                {
+                    luceneSession.SearcherManager.Release(indexSearcher);
+                }
 
                 return new IndexListResult
                 {
@@ -345,7 +351,8 @@ namespace Lucene.Net.IndexProvider
             {
                 try
                 {
-                    var writer = _sessionManager.GetSessionFrom(indexName);
+                    var luceneSession = _sessionManager.GetSessionFrom(indexName);
+                    var writer = luceneSession.Writer;
                     var doc = _mapper.Map(contentItem);
                     writer.UpdateDocument(new Term(GetKeyName(contentItem.GetType()), id), doc);
 
@@ -446,7 +453,8 @@ namespace Lucene.Net.IndexProvider
 
             return Task.Run(() =>
             {
-                var writer = _sessionManager.GetSessionFrom(indexName);
+                var luceneSession = _sessionManager.GetSessionFrom(indexName);
+                var writer = luceneSession.Writer;
                 foreach (var contentItem in contentItems)
                 {
                     try
@@ -494,7 +502,8 @@ namespace Lucene.Net.IndexProvider
         {
             return Task.Run(() =>
             {
-                var writer = _sessionManager.GetSessionFrom(contentType.Name);
+                var luceneSession = _sessionManager.GetSessionFrom(contentType.Name);
+                var writer = luceneSession.Writer;
                 writer.DeleteDocuments(new Term(GetKeyName(contentType), documentId));
                 if (writer.HasDeletions())
                 {

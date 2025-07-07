@@ -20,6 +20,11 @@ public static class FileHelpers
         //Copy all the files & Replaces any files with the same name
         foreach (string filePath in Directory.GetFiles(sourcePath, "*.*", SearchOption.AllDirectories))
         {
+            if (Path.GetExtension(filePath).Equals(".lock"))
+            {
+                continue;
+            }
+
             var outputFilePath = filePath.Replace(sourcePath, targetPath);
             File.Copy(
                 filePath,

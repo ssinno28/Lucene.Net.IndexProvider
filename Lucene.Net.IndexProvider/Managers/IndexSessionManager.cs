@@ -4,6 +4,8 @@ using System.IO;
 using Lucene.Net.Analysis.Standard;
 using Lucene.Net.Index;
 using Lucene.Net.IndexProvider.Interfaces;
+using Lucene.Net.IndexProvider.Models;
+using Lucene.Net.Search;
 using Lucene.Net.Store;
 
 namespace Lucene.Net.IndexProvider.Managers;
@@ -21,13 +23,12 @@ public class IndexSessionManager : IIndexSessionManager
         _localIndexPathFactory = localIndexPathFactory;
     }
 
-    private readonly Lazy<Dictionary<string, IndexWriter>> _contextSessions =
-        new Lazy<Dictionary<string, IndexWriter>>(
-            () => new Dictionary<string, IndexWriter> (StringComparer.OrdinalIgnoreCase));
+    private readonly Lazy<Dictionary<string, LuceneSession>> _contextSessions =
+        new(() => new Dictionary<string, LuceneSession>(StringComparer.OrdinalIgnoreCase));
 
-    public IDictionary<string, IndexWriter> ContextSessions => _contextSessions.Value;
+    public IDictionary<string, LuceneSession> ContextSessions => _contextSessions.Value;
 
-    public IndexWriter GetSessionFrom(string indexName)
+    public LuceneSession GetSessionFrom(string indexName)
     {
         if (!ContextSessions.TryGetValue(indexName, out var context))
         {
@@ -36,9 +37,16 @@ public class IndexSessionManager : IIndexSessionManager
             var analyzer = new StandardAnalyzer(config.LuceneVersion);
             var indexConfig = new IndexWriterConfig(config.LuceneVersion, analyzer);
             var writer = new IndexWriter(GetDirectory(indexName), indexConfig);
+            var searchManager = new SearcherManager(writer, true, new SearcherFactory());
 
-            ContextSessions.Add(indexName, writer);
-            return writer;
+            var luceneSession = new LuceneSession
+            {
+                Writer = writer,
+                SearcherManager = searchManager
+            };
+
+            ContextSessions.Add(indexName, luceneSession);
+            return luceneSession;
         }
 
         return context;
@@ -51,7 +59,7 @@ public class IndexSessionManager : IIndexSessionManager
         return FSDirectory.Open(directoryInfo);
     }
 
-    public IndexWriter GetTransientSession(string indexName)
+    public LuceneSession GetTransientSession(string indexName)
     {
         var config = _configurationManager.GetConfiguration(indexName);
 
@@ -59,18 +67,39 @@ public class IndexSessionManager : IIndexSessionManager
         var indexConfig = new IndexWriterConfig(config.LuceneVersion, analyzer);
         var writer = new IndexWriter(GetDirectory(indexName), indexConfig);
 
-        return writer;
+        var searchManager = new SearcherManager(writer, true, new SearcherFactory());
+        var luceneSession = new LuceneSession
+        {
+            Writer = writer,
+            SearcherManager = searchManager
+        };
+
+        return luceneSession;
     }
 
-    public void CloseSessionOn(string indexName)
+    public void Commit(string indexName)
     {
         if (ContextSessions.TryGetValue(indexName, out var context))
         {
-            if (!context.IsClosed)
+            if (!context.Writer.IsClosed && context.Writer.HasUncommittedChanges())
             {
-                context.Commit();
-                context.Dispose();
+                context.Writer.Commit();
+                context.SearcherManager.MaybeRefresh();
             }
+        }
+    }
+
+    public void CloseSession(string indexName)
+    {
+        if (ContextSessions.TryGetValue(indexName, out var context))
+        {
+            if (!context.Writer.IsClosed)
+            {
+                context.Writer.Commit();
+                context.Writer.Dispose();
+            }
+
+            context.SearcherManager.Dispose();
 
             ContextSessions.Remove(indexName);
         }

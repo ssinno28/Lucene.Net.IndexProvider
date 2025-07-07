@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using AutoFixture;
 using Lucene.Net.DocumentMapper.Helpers;
@@ -11,6 +12,7 @@ using Lucene.Net.IndexProvider.Helpers;
 using Lucene.Net.IndexProvider.Interfaces;
 using Lucene.Net.IndexProvider.Middleware;
 using Lucene.Net.IndexProvider.Models;
+using Lucene.Net.IndexProvider.Tests.Comparators;
 using Lucene.Net.IndexProvider.Tests.Models;
 using Lucene.Net.Util;
 using Microsoft.AspNetCore.Builder;
@@ -83,10 +85,19 @@ public class MiddlewareTests
         var response = 
             await testClient.PostAsync("/blogpost", new StringContent(payload, Encoding.UTF8, "application/json"));
 
-        var sessionManager = _testServer.Services.GetService<IIndexSessionManager>();
-        Assert.Equal(0, sessionManager.ContextSessions.Count);
+        response.EnsureSuccessStatusCode();
 
-        var blogPost = _indexProvider.GetDocumentById(typeof(BlogPost), blogPostDto.Id);
-        Assert.NotNull(blogPost.Hit);
+        var blogPostGetResponse =
+            await testClient.GetAsync($"/blogpost/{blogPostDto.Id}");
+
+        blogPostGetResponse.EnsureSuccessStatusCode();
+
+        var responseContent = await blogPostGetResponse.Content.ReadAsStringAsync();
+        var createdBlogPost = JsonSerializer.Deserialize<BlogPost>(responseContent, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        });
+
+        Assert.Equal(0, new BlogPostComparator().Compare(blogPostDto, createdBlogPost));
     }
 }

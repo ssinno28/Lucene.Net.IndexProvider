@@ -247,7 +247,7 @@ namespace Lucene.Net.IndexProvider.Tests
 
             var result = await _indexProvider.Update(blogPost, blogPost.Id);
             Assert.True(result);
-            _sessionManager.CloseSessionOn(nameof(BlogPost));
+            _sessionManager.Commit(nameof(BlogPost));
 
             var updatedBlogPost = _indexProvider.GetDocumentById<BlogPost>(blogPost.Id);
 
@@ -280,7 +280,6 @@ namespace Lucene.Net.IndexProvider.Tests
                 LuceneVersion = LuceneVersion.LUCENE_48
             });
 
-            var dateTime = DateTime.Now;
             _indexProvider = _serviceProvider.GetService<IIndexProvider>();
             await _indexProvider.CreateIndexIfNotExists(typeof(BlogPost));
 
@@ -374,11 +373,12 @@ namespace Lucene.Net.IndexProvider.Tests
                 }
             });
 
-            _sessionManager.CloseSessionOn(nameof(BlogPost));
+            _sessionManager.Commit(nameof(BlogPost));
         }
 
         public async Task DisposeAsync()
         {
+            _sessionManager.CloseSession(nameof(BlogPost));
             await _indexProvider.DeleteIndex(nameof(BlogPost));
         }
     }

@@ -34,7 +34,7 @@ namespace Lucene.Net.IndexProvider.Middleware
                 {
                     foreach (var index in config.Indexes)
                     {
-                        _sessionManager.CloseSessionOn(index);
+                        _sessionManager.Commit(index);
                         _logger.LogInformation($"Closed session for index {index}");
                     }
                 }
