@@ -1,12 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using Lucene.Net.Analysis.Standard;
+﻿using Lucene.Net.Analysis.Standard;
 using Lucene.Net.Index;
 using Lucene.Net.IndexProvider.Interfaces;
 using Lucene.Net.IndexProvider.Models;
 using Lucene.Net.Search;
 using Lucene.Net.Store;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading;
 
 namespace Lucene.Net.IndexProvider.Managers;
 
@@ -26,10 +27,23 @@ public class IndexSessionManager : IIndexSessionManager
     private readonly Lazy<Dictionary<string, LuceneSession>> _contextSessions =
         new(() => new Dictionary<string, LuceneSession>(StringComparer.OrdinalIgnoreCase));
 
+    private readonly Lazy<Dictionary<string, ManualResetEventSlim>> _sessionLocks =
+        new(() => new Dictionary<string, ManualResetEventSlim>(StringComparer.OrdinalIgnoreCase));
+
     public IDictionary<string, LuceneSession> ContextSessions => _contextSessions.Value;
+    private IDictionary<string, ManualResetEventSlim> SessionLocks => _sessionLocks.Value;
 
     public LuceneSession GetSessionFrom(string indexName)
     {
+        if (SessionLocks.TryGetValue(indexName, out var sessionLock))
+        {
+            bool signaled = sessionLock.Wait(TimeSpan.FromSeconds(5));
+            if (!signaled)
+            {
+                throw new TimeoutException($"Lock for index '{indexName}' could not be acquired within the timeout period.");
+            }
+        }
+
         if (!ContextSessions.TryGetValue(indexName, out var context))
         {
             var config = _configurationManager.GetConfiguration(indexName);
@@ -37,7 +51,7 @@ public class IndexSessionManager : IIndexSessionManager
             var analyzer = new StandardAnalyzer(config.LuceneVersion);
             var indexConfig = new IndexWriterConfig(config.LuceneVersion, analyzer);
             var writer = new IndexWriter(GetDirectory(indexName), indexConfig);
-            var searchManager = new SearcherManager(writer, true, new SearcherFactory());
+            var searchManager = new SearcherManager(writer, true, null);
 
             var luceneSession = new LuceneSession
             {
@@ -59,22 +73,21 @@ public class IndexSessionManager : IIndexSessionManager
         return FSDirectory.Open(directoryInfo);
     }
 
-    public LuceneSession GetTransientSession(string indexName)
+    public void AddLock(string indexName)
     {
-        var config = _configurationManager.GetConfiguration(indexName);
-
-        var analyzer = new StandardAnalyzer(config.LuceneVersion);
-        var indexConfig = new IndexWriterConfig(config.LuceneVersion, analyzer);
-        var writer = new IndexWriter(GetDirectory(indexName), indexConfig);
-
-        var searchManager = new SearcherManager(writer, true, new SearcherFactory());
-        var luceneSession = new LuceneSession
+        if (!SessionLocks.ContainsKey(indexName))
         {
-            Writer = writer,
-            SearcherManager = searchManager
-        };
+            SessionLocks[indexName] = new ManualResetEventSlim(false);
+        }
+    }
 
-        return luceneSession;
+    public void ReleaseLock(string indexName)
+    {
+        if (SessionLocks.TryGetValue(indexName, out var sessionLock))
+        {
+            sessionLock.Set();
+            SessionLocks.Remove(indexName);
+        }
     }
 
     public void Commit(string indexName)
@@ -100,7 +113,6 @@ public class IndexSessionManager : IIndexSessionManager
             }
 
             context.SearcherManager.Dispose();
-
             ContextSessions.Remove(indexName);
         }
     }

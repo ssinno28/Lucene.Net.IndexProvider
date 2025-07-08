@@ -7,8 +7,9 @@ namespace Lucene.Net.IndexProvider.Interfaces;
 public interface IIndexSessionManager
 {
     LuceneSession GetSessionFrom(string indexName);
-    LuceneSession GetTransientSession(string indexName);
     void Commit(string indexName);
     IDictionary<string, LuceneSession> ContextSessions { get; }
     void CloseSession(string indexName);
+    void AddLock(string indexName);
+    void ReleaseLock(string indexName);
 }

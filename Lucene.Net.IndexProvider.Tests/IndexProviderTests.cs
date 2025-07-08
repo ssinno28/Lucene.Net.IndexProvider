@@ -250,8 +250,39 @@ namespace Lucene.Net.IndexProvider.Tests
             _sessionManager.Commit(nameof(BlogPost));
 
             var updatedBlogPost = _indexProvider.GetDocumentById<BlogPost>(blogPost.Id);
-
             Assert.Equal("My Test Blog Posts", updatedBlogPost.Hit.Name);
+        }
+
+        [Fact]
+        public void Test_Locking()
+        {
+            _sessionManager.AddLock(nameof(BlogPost));
+             Assert.Throws<TimeoutException>(() => _indexProvider.GetDocumentById<BlogPost>("1"));
+
+            _sessionManager.ReleaseLock(nameof(BlogPost));
+            var unlockedBlogPost = _indexProvider.GetDocumentById<BlogPost>("1");
+            Assert.NotNull(unlockedBlogPost.Hit);
+        }
+
+        [Fact]
+        public async Task Test_Swap()
+        {
+            string tempIndexName = $"{typeof(BlogPost)}_1";
+            await _indexProvider.CreateIndexIfNotExists(tempIndexName);
+
+            await _indexProvider.Store(new List<object>
+            {
+                new BlogPost
+                {
+                    Name = "My Test Blog Post 11",
+                    Id = "11",
+                    PublishedDate = DateTime.Now.AddDays(-1)
+                }
+            }, tempIndexName);
+
+            await _indexProvider.SwapIndex(tempIndexName, nameof(BlogPost));
+            var updatedBlogPost = _indexProvider.GetDocumentById<BlogPost>("11");
+            Assert.Equal("My Test Blog Post 11", updatedBlogPost.Hit.Name);
         }
 
         public async Task InitializeAsync()
@@ -275,7 +306,7 @@ namespace Lucene.Net.IndexProvider.Tests
             _sessionManager = _serviceProvider.GetService<IIndexSessionManager>();
             configurationManager.AddConfiguration(new LuceneConfig()
             {
-                Indexes = new[] { nameof(BlogPost) },
+                Indexes = new[] { nameof(BlogPost), $"{typeof(BlogPost)}_1" },
                 BatchSize = 50000,
                 LuceneVersion = LuceneVersion.LUCENE_48
             });
