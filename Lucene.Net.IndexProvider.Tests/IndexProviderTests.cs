@@ -11,6 +11,7 @@ using Lucene.Net.IndexProvider.Interfaces;
 using Lucene.Net.IndexProvider.Models;
 using Lucene.Net.IndexProvider.Tests.Models;
 using Lucene.Net.Search;
+using Lucene.Net.Store;
 using Lucene.Net.Util;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -26,6 +27,7 @@ namespace Lucene.Net.IndexProvider.Tests
         private IIndexProvider _indexProvider;
         private ServiceProvider _serviceProvider;
         private Mock<ILocalIndexPathFactory> _mockLocalIndexPathFactory;
+        private Mock<ILuceneDirectoryFactory> _mockLuceneDirectoryFactory;
         private IIndexSessionManager _sessionManager;
 
         [Fact]
@@ -290,8 +292,11 @@ namespace Lucene.Net.IndexProvider.Tests
             _settingsPath = Path.GetFullPath(Path.Combine($"{Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)}", @"..\..\..\settings"));
             _indexPath = $"{_settingsPath}\\PersonalBlog\\index";
             _mockLocalIndexPathFactory = new Mock<ILocalIndexPathFactory>();
+            _mockLuceneDirectoryFactory = new Mock<ILuceneDirectoryFactory>();
             _mockLocalIndexPathFactory.Setup(x => x.GetLocalIndexPath())
                 .Returns(_indexPath);
+            _mockLuceneDirectoryFactory.Setup(x => x.GetIndexDirectory(It.IsAny<string>()))
+                .Returns((string indexName) => FSDirectory.Open(Path.Combine(_indexPath, indexName)));
 
             var services = new ServiceCollection()
                 .AddLuceneDocumentMapper()
@@ -300,6 +305,8 @@ namespace Lucene.Net.IndexProvider.Tests
                 .AddHttpContextAccessor();
 
             services.Add(new ServiceDescriptor(typeof(ILocalIndexPathFactory), _mockLocalIndexPathFactory.Object));
+            services.Add(new ServiceDescriptor(typeof(ILuceneDirectoryFactory), _mockLuceneDirectoryFactory.Object));
+
             _serviceProvider = services.BuildServiceProvider();
 
             var configurationManager = _serviceProvider.GetService<IIndexConfigurationManager>();

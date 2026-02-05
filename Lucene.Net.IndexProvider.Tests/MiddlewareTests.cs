@@ -12,6 +12,7 @@ using Lucene.Net.IndexProvider.Middleware;
 using Lucene.Net.IndexProvider.Models;
 using Lucene.Net.IndexProvider.Tests.Comparators;
 using Lucene.Net.IndexProvider.Tests.Models;
+using Lucene.Net.Store;
 using Lucene.Net.Util;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -30,6 +31,7 @@ public class MiddlewareTests
     private string _settingsPath;
     private string _indexPath;
     private Mock<ILocalIndexPathFactory> _mockLocalIndexPathFactory;
+    private Mock<ILuceneDirectoryFactory> _mockLuceneDirectoryFactory;
     private IIndexProvider _indexProvider;
 
     public MiddlewareTests()
@@ -37,8 +39,11 @@ public class MiddlewareTests
         _settingsPath = Path.GetFullPath(Path.Combine($"{Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)}", @"..\..\..\settings"));
         _indexPath = $"{_settingsPath}\\PersonalBlog\\index";
         _mockLocalIndexPathFactory = new Mock<ILocalIndexPathFactory>();
+        _mockLuceneDirectoryFactory = new Mock<ILuceneDirectoryFactory>();
         _mockLocalIndexPathFactory.Setup(x => x.GetLocalIndexPath())
             .Returns(_indexPath);
+        _mockLuceneDirectoryFactory.Setup(x => x.GetIndexDirectory(It.IsAny<string>()))
+            .Returns((string indexName) => FSDirectory.Open(Path.Combine(_indexPath, indexName)));
 
         var host = new WebHostBuilder()
             .ConfigureServices(services =>
@@ -52,6 +57,7 @@ public class MiddlewareTests
                     .AddControllers();
 
                 services.Add(new ServiceDescriptor(typeof(ILocalIndexPathFactory), _mockLocalIndexPathFactory.Object));
+                services.Add(new ServiceDescriptor(typeof(ILuceneDirectoryFactory), _mockLuceneDirectoryFactory.Object));
             })
             .Configure(app =>
             {

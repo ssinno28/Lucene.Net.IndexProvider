@@ -33,18 +33,21 @@ namespace Lucene.Net.IndexProvider
         private readonly ILocalIndexPathFactory _localIndexPathFactory;
         private readonly IIndexSessionManager _sessionManager;
         private readonly IIndexConfigurationManager _configurationManager;
+        private readonly ILuceneDirectoryFactory _directoryFactory;
 
         public LuceneIndexProvider(
             IDocumentMapper mapper,
             ILoggerFactory loggerFactory,
             ILocalIndexPathFactory localIndexPathFactory,
             IIndexSessionManager sessionManager,
-            IIndexConfigurationManager configurationManager)
+            IIndexConfigurationManager configurationManager, 
+            ILuceneDirectoryFactory directoryFactory)
         {
             _mapper = mapper;
             _localIndexPathFactory = localIndexPathFactory;
             _sessionManager = sessionManager;
             _configurationManager = configurationManager;
+            _directoryFactory = directoryFactory;
             _logger = loggerFactory.CreateLogger<LuceneIndexProvider>();
 
             // Ensures the directory exists
@@ -65,9 +68,7 @@ namespace Lucene.Net.IndexProvider
 
         private Directory GetDirectory(string indexName)
         {
-            string localPath = _localIndexPathFactory.GetLocalIndexPath();
-            var directoryInfo = new DirectoryInfo(Path.Combine(localPath, indexName));
-            return FSDirectory.Open(directoryInfo);
+            return _directoryFactory.GetIndexDirectory(indexName);
         }
 
         /// <summary>

@@ -3,10 +3,8 @@ using Lucene.Net.Index;
 using Lucene.Net.IndexProvider.Interfaces;
 using Lucene.Net.IndexProvider.Models;
 using Lucene.Net.Search;
-using Lucene.Net.Store;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Threading;
 
 namespace Lucene.Net.IndexProvider.Managers;
@@ -14,14 +12,14 @@ namespace Lucene.Net.IndexProvider.Managers;
 public class IndexSessionManager : IIndexSessionManager
 {
     private readonly IIndexConfigurationManager _configurationManager;
-    private readonly ILocalIndexPathFactory _localIndexPathFactory;
+    private readonly ILuceneDirectoryFactory _directoryFactory;
 
     public IndexSessionManager(
         IIndexConfigurationManager configurationManager,
-        ILocalIndexPathFactory localIndexPathFactory)
+        ILuceneDirectoryFactory directoryFactory)
     {
         _configurationManager = configurationManager;
-        _localIndexPathFactory = localIndexPathFactory;
+        _directoryFactory = directoryFactory;
     }
 
     private readonly Lazy<Dictionary<string, LuceneSession>> _contextSessions =
@@ -50,7 +48,7 @@ public class IndexSessionManager : IIndexSessionManager
 
             var analyzer = new StandardAnalyzer(config.LuceneVersion);
             var indexConfig = new IndexWriterConfig(config.LuceneVersion, analyzer);
-            var writer = new IndexWriter(GetDirectory(indexName), indexConfig);
+            var writer = new IndexWriter(_directoryFactory.GetIndexDirectory(indexName), indexConfig);
             var searchManager = new SearcherManager(writer, true, null);
 
             var luceneSession = new LuceneSession
@@ -64,13 +62,6 @@ public class IndexSessionManager : IIndexSessionManager
         }
 
         return context;
-    }
-
-    private FSDirectory GetDirectory(string indexName)
-    {
-        string localPath = _localIndexPathFactory.GetLocalIndexPath();
-        var directoryInfo = new DirectoryInfo(Path.Combine(localPath, indexName));
-        return FSDirectory.Open(directoryInfo);
     }
 
     public void AddLock(string indexName)
