@@ -11,6 +11,7 @@ namespace Lucene.Net.IndexProvider.Helpers
         {
             services.TryAddSingleton<IIndexSessionManager, IndexSessionManager>();
             services.TryAddSingleton<IIndexConfigurationManager, IndexConfigurationManager>();
+            services.TryAddSingleton<IDirectoryManager, DirectoryManager>();
 
             services.AddScoped<IIndexProvider, LuceneIndexProvider>();  
 

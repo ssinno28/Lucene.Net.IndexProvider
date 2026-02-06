@@ -12,14 +12,14 @@ namespace Lucene.Net.IndexProvider.Managers;
 public class IndexSessionManager : IIndexSessionManager
 {
     private readonly IIndexConfigurationManager _configurationManager;
-    private readonly ILuceneDirectoryFactory _directoryFactory;
+    private readonly IDirectoryManager _directoryManager;
 
     public IndexSessionManager(
-        IIndexConfigurationManager configurationManager,
-        ILuceneDirectoryFactory directoryFactory)
+        IIndexConfigurationManager configurationManager, 
+        IDirectoryManager directoryManager)
     {
         _configurationManager = configurationManager;
-        _directoryFactory = directoryFactory;
+        _directoryManager = directoryManager;
     }
 
     private readonly Lazy<Dictionary<string, LuceneSession>> _contextSessions =
@@ -48,7 +48,7 @@ public class IndexSessionManager : IIndexSessionManager
 
             var analyzer = new StandardAnalyzer(config.LuceneVersion);
             var indexConfig = new IndexWriterConfig(config.LuceneVersion, analyzer);
-            var writer = new IndexWriter(_directoryFactory.GetIndexDirectory(indexName), indexConfig);
+            var writer = new IndexWriter(_directoryManager.GetDirectory(indexName), indexConfig);
             var searchManager = new SearcherManager(writer, true, null);
 
             var luceneSession = new LuceneSession
