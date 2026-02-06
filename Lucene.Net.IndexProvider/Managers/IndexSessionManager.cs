@@ -6,6 +6,7 @@ using Lucene.Net.Search;
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using Lucene.Net.Index.Extensions;
 
 namespace Lucene.Net.IndexProvider.Managers;
 
@@ -48,6 +49,8 @@ public class IndexSessionManager : IIndexSessionManager
 
             var analyzer = new StandardAnalyzer(config.LuceneVersion);
             var indexConfig = new IndexWriterConfig(config.LuceneVersion, analyzer);
+            indexConfig.SetWriteLockTimeout(30000);
+
             var writer = new IndexWriter(_directoryManager.GetDirectory(indexName), indexConfig);
             var searchManager = new SearcherManager(writer, true, null);
 
