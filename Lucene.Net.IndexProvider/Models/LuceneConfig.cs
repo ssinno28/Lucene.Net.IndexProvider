@@ -9,5 +9,7 @@ namespace Lucene.Net.IndexProvider.Models
         public LuceneVersion LuceneVersion { get; set; }
         public int BatchSize { get; set; }
         public IList<string> Indexes { get; set; }
+        public bool ReadOnly { get; set; }
+        public int WriteLockTimeout { get; set; } = 30000;
     }
 }

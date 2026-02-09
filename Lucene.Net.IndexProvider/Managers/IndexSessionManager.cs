@@ -48,12 +48,25 @@ public class IndexSessionManager : IIndexSessionManager
             var config = _configurationManager.GetConfiguration(indexName);
 
             var analyzer = new StandardAnalyzer(config.LuceneVersion);
+            var directory = _directoryManager.GetDirectory(indexName);
+
+            if (config.ReadOnly)
+            {
+                var searcherManager = new SearcherManager(directory, null);
+                var readOnlyLuceneSession = new LuceneSession
+                {
+                    SearcherManager = searcherManager
+                };
+
+                ContextSessions.Add(indexName, readOnlyLuceneSession);
+                return readOnlyLuceneSession;
+            }
+
             var indexConfig = new IndexWriterConfig(config.LuceneVersion, analyzer);
-            indexConfig.SetWriteLockTimeout(30000);
+            indexConfig.SetWriteLockTimeout(config.WriteLockTimeout);
 
-            var writer = new IndexWriter(_directoryManager.GetDirectory(indexName), indexConfig);
+            var writer = new IndexWriter(directory, indexConfig);
             var searchManager = new SearcherManager(writer, true, null);
-
             var luceneSession = new LuceneSession
             {
                 Writer = writer,
