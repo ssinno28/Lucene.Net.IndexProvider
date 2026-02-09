@@ -101,7 +101,7 @@ public class IndexSessionManager : IIndexSessionManager
     {
         if (ContextSessions.TryGetValue(indexName, out var context))
         {
-            if (!context.Writer.IsClosed && context.Writer.HasUncommittedChanges())
+            if (context.Writer is { IsClosed: false } && context.Writer.HasUncommittedChanges())
             {
                 context.Writer.Commit();
                 context.SearcherManager.MaybeRefresh();
@@ -113,7 +113,7 @@ public class IndexSessionManager : IIndexSessionManager
     {
         if (ContextSessions.TryGetValue(indexName, out var context))
         {
-            if (!context.Writer.IsClosed)
+            if (context.Writer is { IsClosed: false })
             {
                 context.Writer.Commit();
                 context.Writer.Dispose();
