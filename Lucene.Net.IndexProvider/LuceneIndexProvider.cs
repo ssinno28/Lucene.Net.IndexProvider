@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net.Mime;
 using System.Reflection;
 using System.Threading.Tasks;
 using Lucene.Net.Analysis.Standard;
@@ -15,7 +14,6 @@ using Lucene.Net.IndexProvider.Helpers;
 using Lucene.Net.IndexProvider.Interfaces;
 using Lucene.Net.IndexProvider.Models;
 using Lucene.Net.Search;
-using Lucene.Net.Store;
 using Microsoft.Extensions.Logging;
 using Directory = Lucene.Net.Store.Directory;
 using IndexFilter = Lucene.Net.IndexProvider.FilterBuilder.IndexFilter;
@@ -49,21 +47,6 @@ namespace Lucene.Net.IndexProvider
             _configurationManager = configurationManager;
             _directoryManager = directoryManager;
             _logger = loggerFactory.CreateLogger<LuceneIndexProvider>();
-
-            // Ensures the directory exists
-            EnsureDirectoryExists();
-        }
-
-        private void EnsureDirectoryExists()
-        {
-            string localPath = _localIndexPathFactory.GetLocalIndexPath();
-            if (string.IsNullOrEmpty(localPath)) return;
-
-            var directory = new DirectoryInfo(localPath);
-            if (!directory.Exists)
-            {
-                directory.Create();
-            }
         }
 
         private Directory GetDirectory(string indexName)
