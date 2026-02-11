@@ -20,7 +20,7 @@ public class DirectoryManager : IDirectoryManager
         _directoryFactory = directoryFactory;
     }
 
-    private IDictionary<string, Directory> Directories => _directories.Value;
+    public IDictionary<string, Directory> Directories => _directories.Value;
 
     public Directory GetDirectory(string indexName)
     {
