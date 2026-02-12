@@ -35,4 +35,13 @@ public class DirectoryManager : IDirectoryManager
             return newDirectory;
         }
     }
+
+    public void DisposeDirectory(string indexName)
+    {
+        if (Directories.TryGetValue(indexName, out var directory))
+        {
+            directory.Dispose();
+            Directories.Remove(indexName);
+        }
+    }
 }

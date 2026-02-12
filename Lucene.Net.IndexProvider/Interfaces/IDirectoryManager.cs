@@ -6,5 +6,6 @@ namespace Lucene.Net.IndexProvider.Interfaces;
 public interface IDirectoryManager
 {
     IDictionary<string, Directory> Directories { get; }
+    void DisposeDirectory(string indexName);
     Directory GetDirectory(string indexName);
 }
